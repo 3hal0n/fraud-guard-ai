@@ -1,21 +1,272 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
+/* FraudGuard AI - Enterprise Dark FinTech Design System */
+
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Deep Navy Base - Enterprise Dark Theme */
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+
+    /* Surface colors - Slate/Charcoal panels */
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+
+    /* Primary - Electric Teal (CTAs, Success, Safe) */
+    --primary: 174 72% 50%;
+    --primary-foreground: 222 47% 6%;
+
+    /* Secondary - Slate surfaces */
+    --secondary: 217 33% 15%;
+    --secondary-foreground: 210 40% 96%;
+
+    /* Muted - Subtle backgrounds */
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 55%;
+
+    /* Accent - Subtle highlights */
+    --accent: 217 33% 18%;
+    --accent-foreground: 210 40% 96%;
+
+    /* Destructive - Coral Red (Fraud alerts, High-risk) */
+    --destructive: 4 72% 56%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders and inputs */
+    --border: 217 33% 18%;
+    --input: 217 33% 15%;
+    --ring: 174 72% 50%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar - Darker variation */
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 85%;
+    --sidebar-primary: 174 72% 50%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 217 33% 12%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 217 33% 15%;
+    --sidebar-ring: 174 72% 50%;
+
+    /* Custom FraudGuard tokens */
+    --navy-deep: 222 47% 6%;
+    --navy-medium: 222 47% 9%;
+    --slate-surface: 217 33% 12%;
+    --teal-glow: 174 72% 50%;
+    --teal-subtle: 174 72% 40%;
+    --coral-alert: 4 72% 56%;
+    --coral-subtle: 4 60% 45%;
+    
+    /* Glassmorphism */
+    --glass-bg: 222 47% 8% / 0.7;
+    --glass-border: 217 33% 25% / 0.3;
+    
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(222 47% 8%) 0%, hsl(217 60% 12%) 50%, hsl(222 47% 6%) 100%);
+    --gradient-orb: radial-gradient(ellipse at center, hsl(217 60% 20%) 0%, hsl(222 47% 6%) 70%);
+    --gradient-teal: linear-gradient(135deg, hsl(174 72% 50%) 0%, hsl(174 60% 40%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(217 33% 14%) 0%, hsl(217 33% 10%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px hsl(222 47% 3% / 0.4);
+    --shadow-md: 0 4px 16px hsl(222 47% 3% / 0.5);
+    --shadow-lg: 0 8px 32px hsl(222 47% 3% / 0.6);
+    --shadow-glow: 0 0 40px hsl(174 72% 50% / 0.15);
+  }
+
+  .dark {
+    /* Same as root - this is a dark-first theme */
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 174 72% 50%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 217 33% 15%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 217 33% 18%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 4 72% 56%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 18%;
+    --input: 217 33% 15%;
+    --ring: 174 72% 50%;
+  }
+}
+
+@layer base {
+  * {
+    /* Use CSS variable for border color instead of Tailwind utility to avoid unknown utility errors */
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar for enterprise feel */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--navy-deep));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--slate-surface));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer components {
+  /* Glass card effect */
+  .glass-card {
+    /* Use CSS variables directly to avoid generating color utilities with alpha */
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.3);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Subtle glow effect */
+  .glow-teal {
+    box-shadow: 0 0 30px hsl(var(--teal-glow) / 0.2);
+  }
+
+  /* Hero orb gradient */
+  .hero-orb {
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, hsl(217 50% 18%) 0%, transparent 70%);
+  }
+
+  /* Gradient text */
+  .text-gradient-teal {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background-image: linear-gradient(135deg, hsl(var(--teal-glow)) 0%, hsl(174 60% 65%) 100%);
+  }
+
+  /* Status badges */
+  .badge-safe {
+    background-color: hsl(var(--primary) / 0.15);
+    color: hsl(var(--primary));
+    border: 1px solid hsl(var(--primary) / 0.3);
+  }
+
+  .badge-risk {
+    background-color: hsl(var(--destructive) / 0.15);
+    color: hsl(var(--destructive));
+    border: 1px solid hsl(var(--destructive) / 0.3);
+  }
+
+  /* Animated pulse for status indicators */
+  .pulse-safe {
+    position: relative;
+  }
+
+  .pulse-safe::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background-color: hsl(var(--primary) / 0.3);
+    animation: pulse-ring 2s ease-out infinite;
+  }
+
+  .pulse-risk::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background-color: hsl(var(--destructive) / 0.3);
+    animation: pulse-ring 1.5s ease-out infinite;
+  }
+}
+
+@layer utilities {
+  /* Entrance animations */
+  .animate-fade-up {
+    animation: fade-up 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.4s ease-out forwards;
+  }
+
+  /* Stagger delays */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
   }
 }
 
