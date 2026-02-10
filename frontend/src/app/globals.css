@@ -211,6 +211,19 @@
 }
 
 @layer utilities {
+  /* Custom color utilities for FraudGuard tokens */
+  .bg-navy-deep { background-color: hsl(var(--navy-deep)); }
+  .bg-navy-medium { background-color: hsl(var(--navy-medium)); }
+  .bg-slate-surface { background-color: hsl(var(--slate-surface)); }
+  .bg-teal-glow { background-color: hsl(var(--teal-glow)); }
+  .bg-teal-subtle { background-color: hsl(var(--teal-subtle)); }
+  .bg-coral-alert { background-color: hsl(var(--coral-alert)); }
+  .bg-coral-subtle { background-color: hsl(var(--coral-subtle)); }
+  
+  .text-navy-deep { color: hsl(var(--navy-deep)); }
+  .text-teal-glow { color: hsl(var(--teal-glow)); }
+  .text-coral-alert { color: hsl(var(--coral-alert)); }
+
   /* Entrance animations */
   .animate-fade-up {
     animation: fade-up 0.6s ease-out forwards;
@@ -268,10 +281,4 @@
     transform: scale(1.8);
     opacity: 0;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
