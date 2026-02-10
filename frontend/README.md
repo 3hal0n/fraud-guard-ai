@@ -1,36 +1,151 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FraudGuard AI - Frontend
 
-## Getting Started
+Enterprise-grade FinTech Micro-SaaS frontend for AI-powered fraud detection.
 
-First, run the development server:
+## 🎨 Design System
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Theme
+- **Primary Background**: Deep navy blues (`#0a0e1a`, `#0f1729`)
+- **Secondary Surfaces**: Charcoal and slate greys
+- **Success/Safe**: Electric teal (`#06b6d4`, `#22d3ee`)
+- **Risk/Danger**: Coral red (`#f87171`, `#dc2626`)
+- **Typography**: Inter font family
+- **Visual Style**: Dark mode with glassmorphism effects
+
+## 📁 Project Structure
+
+```
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx                    # Landing page
+│   │   ├── login/page.tsx              # Login page
+│   │   ├── signup/page.tsx             # Signup page
+│   │   └── dashboard/
+│   │       ├── page.tsx                # Dashboard overview
+│   │       ├── analyze/page.tsx        # Transaction analyzer
+│   │       ├── history/page.tsx        # Transaction history
+│   │       └── billing/page.tsx        # Billing & plans
+│   ├── components/
+│   │   └── AppLayout.tsx               # Main dashboard layout
+│   └── globals.css                     # Global styles & theme
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Public Pages
+- **Landing Page**: Hero section, features grid, pricing comparison
+- **Authentication**: Login and signup with social auth options
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Dashboard (Post-Login)
+- **Overview**: Welcome header, usage tracker, stats cards, recent activity
+- **Transaction Analyzer**: Input form with real-time fraud detection results
+- **History**: Searchable table of all scanned transactions
+- **Billing**: Plan management, usage tracking, upgrade options
 
-## Learn More
+## 🎯 Key Components
 
-To learn more about Next.js, take a look at the following resources:
+### Navigation
+- Persistent sidebar with logo and nav items
+- User profile section at bottom
+- Top header with notifications and settings
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Cards & Glassmorphism
+- Frosted glass effect on all cards
+- Subtle borders and soft shadows
+- Smooth hover and focus states
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Forms
+- Clean input fields with focus states
+- Disabled and loading states
+- Real-time validation feedback
 
-## Deploy on Vercel
+### Data Visualization
+- Progress bars for usage tracking
+- Circular gauge for risk scores
+- Animated result reveals
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🛠 Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Framework**: Next.js 16
+- **React**: 19.2.3
+- **Styling**: Tailwind CSS 4.1
+- **TypeScript**: 5.x
+- **Font**: Inter (Google Fonts)
+
+## 📦 Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+## 🎨 Color Reference
+
+```css
+/* Navy Blues */
+--navy-950: #0a0e1a
+--navy-900: #0f1729
+--navy-800: #1a2235
+--navy-700: #243047
+
+/* Slate Greys */
+--slate-800: #1e293b
+--slate-700: #334155
+--slate-600: #475569
+--slate-500: #64748b
+
+/* Teal (Success/Safe) */
+--teal-400: #22d3ee
+--teal-500: #06b6d4
+--teal-600: #0891b2
+
+/* Coral (Risk/Warning) */
+--coral-400: #fca5a5
+--coral-500: #f87171
+--coral-600: #dc2626
+```
+
+## 🔐 Security Features
+
+- Bank-grade 256-bit encryption
+- SOC 2 Type II compliance messaging
+- Secure authentication flow
+- Enterprise-focused design
+
+## 📱 Responsive Design
+
+- Desktop-first approach
+- Mobile-friendly layouts
+- Collapsible sidebar
+- Responsive tables and cards
+
+## ✨ UI/UX Highlights
+
+- **Calm & Authoritative**: Enterprise-grade feel
+- **Data-Rich**: Comprehensive analytics displays
+- **Smooth Transitions**: Professional animations
+- **Clear Hierarchy**: Well-organized information architecture
+- **Trust Indicators**: Security badges and certifications
+
+## 🎯 Target Users
+
+- Banks
+- Payment processors
+- FinTech risk teams
+- Enterprise fraud prevention teams
+
+---
+
+**Note**: This is a frontend implementation. Backend API integration points are ready for connection.
