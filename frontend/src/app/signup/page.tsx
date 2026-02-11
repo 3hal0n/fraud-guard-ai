@@ -34,7 +34,7 @@ export default function SignUpPage() {
         <div className="glass rounded-2xl p-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Create your account</h1>
           <p className="text-slate-500 mb-6">Start protecting your transactions today</p>
-          <SignUp routing="hash" />
+          <SignUp routing="hash" afterSignUpUrl="/" />
 
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-500">

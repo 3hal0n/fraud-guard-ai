@@ -19,7 +19,7 @@ export default function LoginPage() {
         <div className="glass rounded-2xl p-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Sign in</h1>
           <p className="text-slate-500 mb-6">Sign in to your account to continue</p>
-          <SignIn routing="hash" />
+          <SignIn routing="hash" afterSignInUrl="/" />
 
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-500">

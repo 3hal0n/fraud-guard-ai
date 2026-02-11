@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
-import AuthHeader from "../components/AuthHeader";
+import ClerkClientProvider from "../components/ClerkClientProvider";
+import Navbar from "../components/Navbar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,13 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" className="dark">
-        <body className={`${inter.className} antialiased`}>
-          <AuthHeader />
+    <html lang="en" className="dark">
+      <body className={`${inter.className} antialiased`}>
+        <ClerkClientProvider>
+          <Navbar />
           {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkClientProvider>
+      </body>
+    </html>
   );
 }
