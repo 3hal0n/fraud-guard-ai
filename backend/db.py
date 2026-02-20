@@ -95,3 +95,27 @@ def save_transaction(db, tx_id: str, user_id: str | None, amount: float, risk_sc
     db.commit()
     db.refresh(tx)
     return tx
+
+
+def create_user_if_not_exists(db, user_id: str, email: str | None = None, plan: str = "FREE"):
+    user = get_user(db, user_id)
+    if user:
+        # update email if provided
+        if email and user.email != email:
+            user.email = email
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        return user
+    # create new user
+    new = User(id=user_id, email=email, plan=(plan or "FREE"), daily_usage=0)
+    db.add(new)
+    db.commit()
+    db.refresh(new)
+    return new
+
+
+def reset_daily_usage_all(db):
+    """Set daily_usage to 0 for all users."""
+    db.query(User).update({User.daily_usage: 0})
+    db.commit()

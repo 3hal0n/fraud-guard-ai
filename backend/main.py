@@ -30,6 +30,79 @@ def _ensure_tables():
     except Exception as e:
         logger.warning("Could not create DB tables at startup: %s", e)
 
+
+@app.post("/api/v1/webhook/clerk")
+async def clerk_webhook(request: dict):
+    """Simple Clerk webhook receiver to create/sync users.
+    Expected JSON shape: {"type":"user.created", "data": {"id": "user_...", "email": "..."}}
+    This endpoint does NOT currently validate webhook signatures — add verification in production.
+    """
+    try:
+        ev_type = request.get("type")
+        data = request.get("data") or request.get("user") or {}
+        if not data:
+            raise HTTPException(status_code=400, detail="Missing user data")
+
+        if ev_type and ev_type.startswith("user") or data.get("id"):
+            user_id = data.get("id")
+            email = data.get("email") or data.get("primary_email_address")
+            if not user_id:
+                raise HTTPException(status_code=400, detail="Missing user id")
+            db = SessionLocal()
+            try:
+                # create or update user
+                from db import create_user_if_not_exists
+                u = create_user_if_not_exists(db, user_id, email)
+                return {"ok": True, "user_id": u.id}
+            finally:
+                db.close()
+        else:
+            return {"ok": True, "message": "ignored event"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _seconds_until_next_utc_midnight():
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return int((tomorrow - now).total_seconds())
+
+
+def _schedule_daily_reset():
+    import threading
+    def _reset_and_reschedule():
+        db = SessionLocal()
+        try:
+            from db import reset_daily_usage_all
+            reset_daily_usage_all(db)
+            logger.info("daily_usage reset performed")
+        except Exception as e:
+            logger.exception("Failed to reset daily usage: %s", e)
+        finally:
+            db.close()
+        # schedule next run
+        t = threading.Timer(24 * 3600, _reset_and_reschedule)
+        t.daemon = True
+        t.start()
+
+    # initial schedule to next midnight UTC
+    initial = _seconds_until_next_utc_midnight()
+    t0 = threading.Timer(initial, _reset_and_reschedule)
+    t0.daemon = True
+    t0.start()
+
+
+@app.on_event("startup")
+def _start_background_jobs():
+    try:
+        _schedule_daily_reset()
+        logger.info("Scheduled daily reset job")
+    except Exception:
+        logger.exception("Failed to start background jobs")
+
 @app.get("/")
 async def root():
     return {"message": "FraudGuard AI backend is running"}
