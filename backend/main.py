@@ -139,7 +139,7 @@ async def analyze(transaction: Transaction):
                 raise HTTPException(status_code=402, detail="Daily usage limit exceeded for FREE plan")
 
         # Run prediction
-        score, status = predict_fraud(transaction.dict())
+        score, status = predict_fraud(transaction.model_dump())
 
         # Persist transaction and increment usage if user exists
         tx_id = str(uuid.uuid4())
