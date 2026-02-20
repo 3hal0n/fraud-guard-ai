@@ -3,3 +3,7 @@ uvicorn[standard]
 scikit-learn
 xgboost
 joblib
+sqlalchemy
+psycopg2-binary
+pytest
+alembic
