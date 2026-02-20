@@ -7,9 +7,24 @@ from fastapi.testclient import TestClient
 def setup_module(module):
     # use SQLite in-memory for tests
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    # create tables for in-memory SQLite
+    _ensure_backend_on_path()
+    from db import create_tables
+    create_tables()
+
+
+def _ensure_backend_on_path():
+    import sys, os
+    here = os.path.dirname(__file__)
+    backend_dir = os.path.dirname(here)
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+
+
 
 
 def test_analyze_no_user(monkeypatch):
+    _ensure_backend_on_path()
     from main import app
     client = TestClient(app)
 
@@ -21,6 +36,7 @@ def test_analyze_no_user(monkeypatch):
 
 
 def test_analyze_with_user(monkeypatch):
+    _ensure_backend_on_path()
     from main import app
     # create a user first via webhook endpoint
     client = TestClient(app)

@@ -24,11 +24,12 @@ app = FastAPI(title="FraudGuard AI - Backend")
 
 @app.on_event("startup")
 def _ensure_tables():
+    # Migrations should be used in production; keep import-time safety.
     try:
-        create_tables()
-        logger.info("DB tables ensured at startup")
-    except Exception as e:
-        logger.warning("Could not create DB tables at startup: %s", e)
+        # keep behavior non-fatal for dev if DB is unreachable
+        logger.info("Skipping create_tables at startup; use Alembic to manage migrations")
+    except Exception:
+        pass
 
 
 @app.post("/api/v1/webhook/clerk")
