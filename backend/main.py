@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from predict import predict_fraud
 import uuid
 import os
-from db import SessionLocal, create_tables, get_user, increment_usage, save_transaction
+from db import SessionLocal, create_tables, get_user, increment_usage, save_transaction, Transaction as TxModel
 import logging
 
 logger = logging.getLogger("fraudguard")
@@ -20,6 +21,19 @@ class Transaction(BaseModel):
     user_id: str | None = None
 
 app = FastAPI(title="FraudGuard AI - Backend")
+
+_ALLOWED_ORIGINS = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -123,6 +137,60 @@ async def db_status():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/user/{user_id}")
+async def get_user_info(user_id: str):
+    """Return plan and daily_usage for a given user."""
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            # auto-create on first access (in case webhook wasn't triggered)
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+        daily_limit = 5 if (user.plan or "FREE").upper() == "FREE" else None
+        return {
+            "user_id": user.id,
+            "email": user.email,
+            "plan": user.plan or "FREE",
+            "daily_usage": user.daily_usage or 0,
+            "daily_limit": daily_limit,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/transactions/{user_id}")
+async def get_transactions(user_id: str, limit: int = 20):
+    """Return recent transactions for a user, newest first."""
+    db = SessionLocal()
+    try:
+        txns = (
+            db.query(TxModel)
+            .filter(TxModel.user_id == user_id)
+            .order_by(TxModel.timestamp.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": t.id,
+                "amount": t.amount,
+                "risk_score": t.risk_score,
+                "status": "risk" if t.risk_score >= 50 else "safe",
+                "timestamp": t.timestamp.isoformat() if t.timestamp else None,
+            }
+            for t in txns
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
 
 @app.post("/api/v1/analyze")
 async def analyze(transaction: Transaction):

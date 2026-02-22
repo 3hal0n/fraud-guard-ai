@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import React from "react";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton, useAuth, useUser } from "@clerk/nextjs";
+import { SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 export default function Navbar() {
-  const { isSignedIn } = useAuth();
-  const { user } = useUser();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-slate-700/50">
@@ -24,7 +22,12 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <SignedIn>
               <div className="flex items-center gap-4">
-                <div className="text-sm text-slate-400">{user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress}</div>
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-navy-950 rounded-lg font-medium text-sm transition-all"
+                >
+                  Go to Dashboard
+                </Link>
                 <UserButton />
               </div>
             </SignedIn>
