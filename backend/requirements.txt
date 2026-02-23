@@ -3,6 +3,8 @@ uvicorn[standard]
 scikit-learn
 xgboost
 joblib
+numpy
+pandas
 sqlalchemy
 psycopg2-binary
 pytest

@@ -1,92 +1,232 @@
+"""
+predict.py – ML inference bridge for FraudGuard AI.
+
+Bridges the gap between the human-readable frontend payload
+    { amount, merchant, location, time }
+and the 30-feature XGBoost model trained on the Kaggle Credit Card Fraud
+dataset (columns: Time, V1–V28, Amount).
+
+Workflow
+--------
+1.  load_models()           – called once from the FastAPI lifespan startup hook.
+2.  time_to_seconds()       – converts "2026-02-26 13:13" → seconds since midnight.
+3.  simulate_v_features()   – deterministic, hash-seeded V1–V28 in [-2.0, 2.0].
+4.  predict_fraud()         – assembles the 30-col DataFrame, scales, and infers.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+from datetime import datetime
 from pathlib import Path
-import os
+from typing import Optional
 
-_MODEL = None
-_SCALER = None
-_MODEL_LOADED = False
+import numpy as np
+import pandas as pd
+
+logger = logging.getLogger("fraudguard")
+
+# ---------------------------------------------------------------------------
+# Column order exactly matching the model's training data
+# ---------------------------------------------------------------------------
+FEATURE_COLUMNS: list[str] = ["Time"] + [f"V{i}" for i in range(1, 29)] + ["Amount"]
+
+# ---------------------------------------------------------------------------
+# Module-level singletons – populated once by load_models()
+# ---------------------------------------------------------------------------
+MODEL = None   # XGBoost (or any sklearn-compatible) classifier
+SCALER = None  # sklearn StandardScaler (or similar)
 
 
-def _load_model():
-    """Attempt to load model and scaler from ../ml-models.
-    If loading fails, leave globals as None and return.
+# ---------------------------------------------------------------------------
+# Public: called once from FastAPI lifespan
+# ---------------------------------------------------------------------------
+
+def load_models() -> None:
+    """Load .pkl artefacts into module-level singletons.
+
+    Raises FileNotFoundError if either .pkl is missing so the application
+    fails fast at startup rather than silently at request-time.
     """
-    global _MODEL, _SCALER, _MODEL_LOADED
-    if _MODEL_LOADED:
-        return
-    _MODEL_LOADED = True
+    global MODEL, SCALER
+
+    base = Path(__file__).parent / "ml-models"
+    model_path = base / "fraud_model.pkl"
+    scaler_path = base / "scaler.pkl"
+
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found: {model_path}")
+    if not scaler_path.exists():
+        raise FileNotFoundError(f"Scaler not found: {scaler_path}")
+
+    import joblib  # lazy import – not needed at module parse time
+
+    MODEL = joblib.load(model_path)
+    SCALER = joblib.load(scaler_path)
+
+    logger.info(
+        "ML artefacts loaded — model: %s | scaler n_features_in_: %s",
+        type(MODEL).__name__,
+        getattr(SCALER, "n_features_in_", "unknown"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Helper: time string → seconds since midnight (the "Time" feature)
+# ---------------------------------------------------------------------------
+
+def time_to_seconds_since_midnight(time_str: Optional[str]) -> float:
+    """Convert a human-readable time string to seconds since midnight.
+
+    Accepted formats (examples):
+      * "2026-02-26 13:13"    → 47580.0
+      * "2026-02-26 13:13:45" → 47625.0
+      * "13:13"               → 47580.0
+      * None / ""             → 0.0
+    """
+    if not time_str:
+        return 0.0
+
+    # Try ISO-style datetime first (most common from frontend)
     try:
-        import joblib
-        base = Path(__file__).parent
-        model_path = base / "ml-models" / "fraud_model.pkl"
-        scaler_path = base / "ml-models" / "scaler.pkl"
-        if model_path.exists():
-            _MODEL = joblib.load(model_path)
-        if scaler_path.exists():
-            _SCALER = joblib.load(scaler_path)
-    except Exception:
-        # silently ignore and keep heuristic fallback
-        _MODEL = None
-        _SCALER = None
-
-
-def predict_fraud(txn: dict) -> tuple:
-    """
-    Predict using a persisted ML model when available, otherwise use a simple
-    heuristic. Returns: (risk_score:int 0-100, status: 'risk'|'safe')
-    """
-    # Try model first
-    try:
-        _load_model()
-        if _MODEL is not None:
-            try:
-                import numpy as np
-                # Build a minimal feature vector. Models may expect different
-                # features; we attempt a safe, minimal prediction and fall
-                # back if it fails.
-                amount = float(txn.get("amount") or 0)
-                X = np.array([[amount]], dtype=float)
-                if _SCALER is not None:
-                    X = _SCALER.transform(X)
-                if hasattr(_MODEL, "predict_proba"):
-                    prob = _MODEL.predict_proba(X)[0]
-                    # take positive-class probability if shape fits
-                    score = int(prob[-1] * 100)
-                else:
-                    pred = _MODEL.predict(X)[0]
-                    # If model outputs 0/1, scale to 0-100
-                    score = int(pred * 100) if isinstance(pred, (int, float)) else 0
-                score = max(0, min(100, int(score)))
-                status = "risk" if score >= 50 else "safe"
-                return score, status
-            except Exception:
-                # fall back to heuristic below
-                pass
-    except Exception:
+        dt = datetime.fromisoformat(time_str.strip())
+        return float(dt.hour * 3600 + dt.minute * 60 + dt.second)
+    except ValueError:
         pass
 
-    # --- Heuristic fallback ---
+    # Fall back: extract the last whitespace-separated token as HH:MM[:SS]
     try:
-        amount = float(txn.get("amount") or 0)
+        t_part = time_str.strip().split()[-1]
+        segments = t_part.split(":")
+        h = int(segments[0])
+        m = int(segments[1]) if len(segments) > 1 else 0
+        s = int(segments[2]) if len(segments) > 2 else 0
+        return float(h * 3600 + m * 60 + s)
     except Exception:
-        amount = 0
+        logger.warning("Could not parse time string %r – defaulting to 0.0", time_str)
+        return 0.0
 
-    merchant = (txn.get("merchant") or "").lower()
-    location = (txn.get("location") or "").lower()
 
-    score = 0
+# ---------------------------------------------------------------------------
+# Helper: deterministic V1–V28 simulation
+# ---------------------------------------------------------------------------
 
-    # Heuristics
-    if amount > 1000:
-        # scale the amount above 1000 into a portion of score
-        score += min(60, (amount - 1000) / 10)
+def simulate_v_features(merchant: str, location: str) -> np.ndarray:
+    """Generate a deterministic 28-element array of floats in [-2.0, 2.0].
 
-    if "unknown" in merchant or "unknown" in location:
-        score += 25
+    The same (merchant, location) pair always produces the same vector,
+    mimicking stable PCA-projected features without a real PCA pipeline.
 
-    if merchant in ["crypto exchange", "suspicious vendor"]:
-        score += 30
+    Algorithm:
+      1. Lowercase + strip both strings, join with "|".
+      2. MD5-hash the UTF-8 bytes → 32-char hex digest.
+      3. Interpret the full 128-bit digest as an integer, mod 2^32 for the seed.
+      4. Seed NumPy's legacy RandomState and draw 28 uniform floats.
+    """
+    seed_str = f"{merchant.lower().strip()}|{location.lower().strip()}"
+    hash_hex = hashlib.md5(seed_str.encode("utf-8")).hexdigest()
+    seed = int(hash_hex, 16) % (2**32)   # keep within np.random.RandomState range
+    rng = np.random.RandomState(seed)
+    return rng.uniform(-2.0, 2.0, size=28)
 
-    # clamp and round
-    score = max(0, min(100, int(score)))
-    status = "risk" if score >= 50 else "safe"
-    return score, status
+
+# ---------------------------------------------------------------------------
+# Internal: apply scaler defensively, handling different training configs
+# ---------------------------------------------------------------------------
+
+def _apply_scaler(
+    time_float: float,
+    amount: float,
+    v_features: np.ndarray,
+) -> tuple[float, float]:
+    """Return (scaled_time, scaled_amount) using the loaded SCALER.
+
+    Handles two common training configurations:
+      • n_features_in_ == 2  →  scaler was fit on [Time, Amount] only.
+      • n_features_in_ == 30 →  scaler was fit on the full 30-feature vector;
+                                 pass all 30 and extract scaled Time / Amount.
+
+    Falls back to raw unscaled values if transformation raises.
+    """
+    try:
+        n = getattr(SCALER, "n_features_in_", 2)
+
+        if n == 2:
+            arr = np.array([[time_float, float(amount)]])
+            scaled = SCALER.transform(arr)
+            return float(scaled[0, 0]), float(scaled[0, 1])
+
+        # n == 30: build full row and extract positions 0 (Time) and -1 (Amount)
+        full_row = np.array([[time_float] + v_features.tolist() + [float(amount)]])
+        scaled = SCALER.transform(full_row)
+        return float(scaled[0, 0]), float(scaled[0, -1])
+
+    except Exception as exc:
+        logger.warning("SCALER.transform failed (%s) – using raw values", exc)
+        return time_float, float(amount)
+
+
+# ---------------------------------------------------------------------------
+# Public: main inference entry point
+# ---------------------------------------------------------------------------
+
+def predict_fraud(
+    amount: float,
+    merchant: str,
+    location: str = "",
+    time_str: str = "",
+) -> tuple[int, bool]:
+    """Run fraud inference for a single transaction.
+
+    Parameters
+    ----------
+    amount   : Transaction amount (e.g. 1250.00).
+    merchant : Merchant name / category string (e.g. "Retail").
+    location : Location string (e.g. "192.168.1.1" or "New York, NY").
+    time_str : ISO-like datetime or time string (e.g. "2026-02-26 13:13").
+
+    Returns
+    -------
+    (risk_score, is_fraud)
+      risk_score : int in [0, 100] — probability of fraud × 100, clamped.
+      is_fraud   : bool — True when fraud probability >= 0.50.
+
+    Raises
+    ------
+    RuntimeError if load_models() has not been called yet.
+    """
+    if MODEL is None or SCALER is None:
+        raise RuntimeError(
+            "ML models are not loaded. "
+            "Ensure load_models() is called during application startup."
+        )
+
+    # 1. Convert time string → seconds since midnight (the "Time" column)
+    time_float = time_to_seconds_since_midnight(time_str)
+
+    # 2. Simulate deterministic V1–V28 from merchant + location hash
+    v_features = simulate_v_features(merchant, location)
+
+    # 3. Scale Time and Amount using the loaded scaler
+    scaled_time, scaled_amount = _apply_scaler(time_float, float(amount), v_features)
+
+    # 4. Build 30-column DataFrame in exact training column order
+    row_values = [scaled_time] + v_features.tolist() + [scaled_amount]
+    df = pd.DataFrame([row_values], columns=FEATURE_COLUMNS)
+
+    # 5. Inference: predict_proba returns shape (1, 2) → [P(legit), P(fraud)]
+    proba = MODEL.predict_proba(df)[0]
+    fraud_prob = float(proba[1])
+    risk_score = max(0, min(100, round(fraud_prob * 100)))
+    is_fraud = fraud_prob >= 0.5
+
+    logger.debug(
+        "predict_fraud | amount=%.2f merchant=%r → fraud_prob=%.4f risk_score=%d",
+        amount,
+        merchant,
+        fraud_prob,
+        risk_score,
+    )
+
+    return risk_score, is_fraud
