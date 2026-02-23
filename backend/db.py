@@ -56,19 +56,22 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {"schema": "fraudguard"}
     id = Column(String, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=True)
     plan = Column(String, default="FREE")
     daily_usage = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    __table_args__ = {"schema": "fraudguard"}
     id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    user_id = Column(String, ForeignKey("fraudguard.users.id"), nullable=True)
     amount = Column(Float, nullable=False)
     risk_score = Column(Integer, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 def create_tables():
@@ -90,7 +93,7 @@ def increment_usage(db, user: User, amount: int = 1):
 
 
 def save_transaction(db, tx_id: str, user_id: str | None, amount: float, risk_score: int):
-    tx = Transaction(id=tx_id, user_id=user_id, amount=amount, risk_score=risk_score, timestamp=datetime.utcnow())
+    tx = Transaction(id=tx_id, user_id=user_id, amount=amount, risk_score=risk_score, created_at=datetime.utcnow())
     db.add(tx)
     db.commit()
     db.refresh(tx)

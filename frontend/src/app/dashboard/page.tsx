@@ -28,7 +28,7 @@ export default function DashboardPage() {
     setLoadingInfo(true);
     Promise.all([
       getUserInfo(user.id),
-      getTransactions(user.id, 4),
+      getTransactions(user.id, 100),   // fetch up to 100 for accurate stats
     ])
       .then(([info, txns]) => {
         setUserInfo(info);
@@ -106,7 +106,9 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between mb-6">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Total Scans This Month</p>
-                <h3 className="text-4xl font-bold text-foreground">847</h3>
+                <h3 className="text-4xl font-bold text-foreground">
+                  {loadingInfo ? "–" : recentTxns.length}
+                </h3>
               </div>
               <div className="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,15 +116,9 @@ export default function DashboardPage() {
                 </svg>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-sm text-teal-400">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                </svg>
-                +12.5%
-              </span>
-              <span className="text-sm text-slate-500">vs last month</span>
-            </div>
+            <p className="text-sm text-slate-500">
+              {loadingInfo ? "" : recentTxns.length === 0 ? "No scans yet" : "Transactions analyzed"}
+            </p>
           </div>
 
           {/* At-Risk Transactions */}
@@ -130,7 +126,9 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between mb-6">
               <div>
                 <p className="text-sm text-slate-500 mb-1">At-Risk Transactions Detected</p>
-                <h3 className="text-4xl font-bold text-coral-500">23</h3>
+                <h3 className="text-4xl font-bold text-coral-500">
+                  {loadingInfo ? "–" : recentTxns.filter((t) => t.status === "risk").length}
+                </h3>
               </div>
               <div className="w-12 h-12 bg-coral-500/20 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-coral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,15 +136,11 @@ export default function DashboardPage() {
                 </svg>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-sm text-coral-400">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586 3.707 5.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clipRule="evenodd" />
-                </svg>
-                -8.3%
-              </span>
-              <span className="text-sm text-slate-500">vs last month</span>
-            </div>
+            <p className="text-sm text-slate-500">
+              {loadingInfo ? "" : recentTxns.length === 0
+                ? "No scans yet"
+                : `${Math.round((recentTxns.filter((t) => t.status === "risk").length / recentTxns.length) * 100)}% risk rate`}
+            </p>
           </div>
         </div>
 
@@ -159,7 +153,7 @@ export default function DashboardPage() {
             <p className="text-slate-500 text-sm py-4">No transactions yet. <a href="/dashboard/analyze" className="text-teal-400 hover:text-teal-300">Scan a new one →</a></p>
           ) : (
             <div className="space-y-4">
-              {recentTxns.map((activity) => (
+              {recentTxns.slice(0, 4).map((activity) => (
                 <div
                   key={activity.id}
                   className="flex items-center justify-between p-4 rounded-lg hover:bg-navy-900 transition-all border border-slate-800"
@@ -183,7 +177,7 @@ export default function DashboardPage() {
                         ${Number(activity.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </p>
                       <p className="text-sm text-slate-500">
-                        {new Date(activity.timestamp).toLocaleString()}
+                        {activity.timestamp ? new Date(activity.timestamp).toLocaleString() : "—"}
                       </p>
                     </div>
                   </div>

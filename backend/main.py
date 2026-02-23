@@ -205,7 +205,7 @@ async def get_transactions(user_id: str, limit: int = 20):
         txns = (
             db.query(TxModel)
             .filter(TxModel.user_id == user_id)
-            .order_by(TxModel.timestamp.desc())
+            .order_by(TxModel.created_at.desc())
             .limit(limit)
             .all()
         )
@@ -213,9 +213,9 @@ async def get_transactions(user_id: str, limit: int = 20):
             {
                 "id": t.id,
                 "amount": t.amount,
-                "risk_score": t.risk_score,
+                "risk_score": round(t.risk_score / 100, 4),  # 0-1 float for frontend
                 "status": "risk" if t.risk_score >= 50 else "safe",
-                "timestamp": t.timestamp.isoformat() if t.timestamp else None,
+                "timestamp": t.created_at.isoformat() if t.created_at else None,
             }
             for t in txns
         ]
@@ -273,7 +273,7 @@ async def analyze(transaction: TransactionRequest):
             except Exception as persist_exc:
                 logger.warning("Failed to persist transaction: %s", persist_exc)
 
-        return {"risk_score": score, "is_fraud": is_fraud, "status": status, "db_available": db_ok}
+        return {"risk_score": round(score / 100, 4), "is_fraud": is_fraud, "status": status, "db_available": db_ok}
     except HTTPException:
         raise
     except Exception as e:
