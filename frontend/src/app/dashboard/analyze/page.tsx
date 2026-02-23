@@ -24,6 +24,55 @@ const analyzeSchema = z.object({
 
 type AnalyzeFormData = z.infer<typeof analyzeSchema>;
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function generateFraudIndicators(data: AnalyzeFormData, riskScore: number): string[] {
+  const indicators: string[] = [];
+  const loc = data.location.toLowerCase();
+  const cat = data.category.toLowerCase();
+  const amount = data.amount;
+
+  // High-risk geographic locations
+  const riskLocKeywords = [
+    "russia", "iran", "north korea", "nigeria", "offshore",
+    "international", "unknown", "vpn", "proxy",
+  ];
+  if (riskLocKeywords.some((kw) => loc.includes(kw))) {
+    indicators.push("Location Anomaly");
+  }
+
+  // Crypto mentioned in location or category
+  if (loc.includes("crypto") || cat.includes("crypto")) {
+    indicators.push("High-Risk Merchant Category");
+  }
+
+  // Unclassified or inherently risky category
+  if (["other", "travel"].includes(cat) && !indicators.includes("High-Risk Merchant Category")) {
+    indicators.push("High-Risk Merchant Category");
+  }
+
+  // Unusually high transaction amount
+  if (amount > 5000) {
+    indicators.push("Unusually Large Transaction Amount");
+  } else if (amount > 1000) {
+    indicators.push("Above-Average Transaction Amount");
+  }
+
+  // Off-hours transaction (midnight – 5 am)
+  if (data.time) {
+    const txnHour = new Date(data.time).getHours();
+    if (txnHour >= 0 && txnHour < 5) {
+      indicators.push("Off-Hours Transaction (Late Night)");
+    }
+  }
+
+  // Catch-all when the AI flags something the heuristics miss
+  if (indicators.length === 0 && riskScore >= 75) {
+    indicators.push("Flagged by AI Anomaly Detection");
+  }
+
+  return indicators;
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────────
 export default function AnalyzePage() {
   const { user } = useUser();
@@ -34,6 +83,7 @@ export default function AnalyzePage() {
     elapsed?: number;
   } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [submittedFormData, setSubmittedFormData] = useState<AnalyzeFormData | null>(null);
 
   const {
     register,
@@ -48,6 +98,7 @@ export default function AnalyzePage() {
     setIsScanning(true);
     setScanResult(null);
     setApiError(null);
+    setSubmittedFormData(data);
 
     const t0 = performance.now();
     try {
@@ -76,8 +127,17 @@ export default function AnalyzePage() {
   const handleScanAnother = () => {
     setScanResult(null);
     setApiError(null);
+    setSubmittedFormData(null);
     reset();
   };
+
+  // ── Derived fraud state ─────────────────────────────────────────────────────
+  // The frontend is the source of truth: >= 75 % risk score → fraudulent.
+  const isFraud = scanResult ? scanResult.riskScore >= 75 : false;
+  const fraudIndicators =
+    isFraud && submittedFormData
+      ? generateFraudIndicators(submittedFormData, scanResult!.riskScore)
+      : [];
 
   return (
     <AppLayout>
@@ -297,7 +357,7 @@ export default function AnalyzePage() {
                         cx="96"
                         cy="96"
                         r="88"
-                        stroke={scanResult.status === "risk" ? "#f87171" : "#06b6d4"}
+                        stroke={isFraud ? "#ef4444" : "#06b6d4"}
                         strokeWidth="12"
                         fill="none"
                         strokeDasharray={`${(scanResult.riskScore / 100) * 552} 552`}
@@ -306,7 +366,7 @@ export default function AnalyzePage() {
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className={`text-5xl font-bold ${scanResult.status === "risk" ? "text-coral-500" : "text-teal-400"}`}>
+                      <span className={`text-5xl font-bold ${isFraud ? "text-red-500" : "text-teal-400"}`}>
                         {scanResult.riskScore}%
                       </span>
                       <span className="text-sm text-slate-500 mt-1">Risk Score</span>
@@ -317,11 +377,11 @@ export default function AnalyzePage() {
                 {/* Status Badge */}
                 <div className="flex justify-center">
                   <div className={`px-6 py-3 rounded-lg font-semibold text-lg ${
-                    scanResult.status === "risk"
-                      ? "bg-coral-500/20 border border-coral-500/30 text-coral-400"
+                    isFraud
+                      ? "bg-red-500/20 border border-red-500/40 text-red-400"
                       : "bg-teal-500/20 border border-teal-500/30 text-teal-400"
                   }`}>
-                    {scanResult.status === "risk" ? "⚠️ HIGH RISK DETECTED" : "✓ TRANSACTION SAFE"}
+                    {isFraud ? "⚠️ HIGH RISK DETECTED" : "✓ TRANSACTION SAFE"}
                   </div>
                 </div>
 
@@ -335,26 +395,38 @@ export default function AnalyzePage() {
                     <span className="text-sm text-slate-400">Model Confidence</span>
                     <span className="font-medium text-foreground">98.3%</span>
                   </div>
-                  <div className="p-4 bg-navy-900 rounded-lg border border-slate-700 flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Fraud Indicators</span>
-                    <span className="font-medium text-foreground">
-                      {scanResult.status === "risk" ? "3 detected" : "None"}
-                    </span>
+                  <div className="p-4 bg-navy-900 rounded-lg border border-slate-700">
+                    <div className={`flex items-center justify-between ${isFraud ? "mb-2" : ""}`}>
+                      <span className="text-sm text-slate-400">Fraud Indicators</span>
+                      <span className={`font-medium ${isFraud ? "text-red-400" : "text-foreground"}`}>
+                        {isFraud ? `${fraudIndicators.length} detected` : "None"}
+                      </span>
+                    </div>
+                    {isFraud && fraudIndicators.length > 0 && (
+                      <ul className="space-y-1.5">
+                        {fraudIndicators.map((indicator, i) => (
+                          <li key={i} className="flex items-center gap-2 text-sm font-medium text-red-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                            {indicator}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
 
                 {/* Recommendation */}
                 <div className={`p-4 rounded-lg border ${
-                  scanResult.status === "risk"
-                    ? "bg-coral-500/10 border-coral-500/30"
+                  isFraud
+                    ? "bg-red-500/10 border-red-500/30"
                     : "bg-teal-500/10 border-teal-500/30"
                 }`}>
                   <p className="text-sm font-medium text-foreground mb-1">
-                    {scanResult.status === "risk" ? "Recommended Action" : "Result"}
+                    {isFraud ? "Recommended Action" : "Result"}
                   </p>
                   <p className="text-sm text-slate-400">
-                    {scanResult.status === "risk"
-                      ? "This transaction shows high risk indicators. Consider additional verification steps or blocking the transaction."
+                    {isFraud
+                      ? "This transaction has been flagged for manual review due to suspicious indicators."
                       : "This transaction passed all fraud detection checks and appears legitimate."}
                   </p>
                 </div>
