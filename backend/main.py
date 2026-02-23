@@ -212,9 +212,9 @@ async def get_transactions(user_id: str, limit: int = 20):
         return [
             {
                 "id": t.id,
-                "amount": t.amount,
-                "risk_score": round(t.risk_score / 100, 4),  # 0-1 float for frontend
-                "status": "risk" if t.risk_score >= 50 else "safe",
+                "amount": float(t.amount),
+                "risk_score": float(t.risk_score),  # already 0-1 in DB
+                "status": "risk" if float(t.risk_score) >= 0.50 else "safe",
                 "timestamp": t.created_at.isoformat() if t.created_at else None,
             }
             for t in txns
@@ -243,11 +243,14 @@ async def analyze(transaction: TransactionRequest):
             try:
                 user = get_user(db, user_id)
                 if not user:
-                    raise HTTPException(status_code=404, detail="User not found")
+                    # Auto-create the user row on first scan (Clerk is the auth
+                    # source of truth; we just need a DB record for quota tracking)
+                    from db import create_user_if_not_exists
+                    user = create_user_if_not_exists(db, user_id)
                 if (user.plan or "FREE").upper() == "FREE" and (user.daily_usage or 0) >= 5:
                     raise HTTPException(status_code=402, detail="Daily usage limit exceeded for FREE plan")
             except HTTPException:
-                raise  # propagate 402/404 as intended
+                raise  # propagate 402 as intended
             except Exception as guard_exc:
                 # DB unreachable — skip guardrail, log, continue with inference
                 logger.warning("Guardrail DB lookup failed; skipping: %s", guard_exc)

@@ -168,6 +168,56 @@ def _apply_scaler(
 
 
 # ---------------------------------------------------------------------------
+# Heuristic: rules-based scoring as a floor for the ML output
+# ---------------------------------------------------------------------------
+
+_HIGH_RISK_LOCATIONS = [
+    "russia", "iran", "north korea", "nigeria", "belarus", "syria",
+    "myanmar", "cuba", "venezuela", "offshore", "international",
+    "unknown", "vpn", "proxy", "tor",
+]
+
+_HIGH_RISK_MERCHANTS = [
+    "crypto", "casino", "gambling", "forex", "binary option",
+    "suspicious", "unknown",
+]
+
+
+def _heuristic_score(amount: float, merchant: str, location: str, time_str: str) -> int:
+    """Rule-based risk score (0-100) grounded in the actual input values.
+
+    Used as a floor so that obviously suspicious transactions are never
+    mis-classified as safe by the ML model.
+    """
+    score = 0
+    loc = location.lower().strip()
+    merch = merchant.lower().strip()
+
+    # ── Geographic risk ─────────────────────────────────────────────────────
+    if any(kw in loc for kw in _HIGH_RISK_LOCATIONS):
+        score += 45
+
+    # ── Merchant / category risk ─────────────────────────────────────────────
+    if any(kw in merch for kw in _HIGH_RISK_MERCHANTS):
+        score += 25
+
+    # ── Transaction amount ───────────────────────────────────────────────────
+    if amount > 100_000:
+        score += 40
+    elif amount > 10_000:
+        score += 25
+    elif amount > 2_000:
+        score += 10
+
+    # ── Off-hours (midnight – 5 am local) ───────────────────────────────────
+    t = time_to_seconds_since_midnight(time_str)
+    if 0 <= t < 18_000:   # 0 – 5 h
+        score += 10
+
+    return max(0, min(100, score))
+
+
+# ---------------------------------------------------------------------------
 # Public: main inference entry point
 # ---------------------------------------------------------------------------
 
@@ -218,14 +268,20 @@ def predict_fraud(
     # 5. Inference: predict_proba returns shape (1, 2) → [P(legit), P(fraud)]
     proba = MODEL.predict_proba(df)[0]
     fraud_prob = float(proba[1])
-    risk_score = max(0, min(100, round(fraud_prob * 100)))
-    is_fraud = fraud_prob >= 0.5
+    ml_score = max(0, min(100, round(fraud_prob * 100)))
+
+    # 6. Heuristic floor — ensures real-world suspicious inputs are never
+    #    silently cleared by a model that was trained on PCA-obfuscated features.
+    heuristic = _heuristic_score(float(amount), merchant, location, time_str)
+    risk_score = max(ml_score, heuristic)
+    is_fraud = risk_score >= 50
 
     logger.debug(
-        "predict_fraud | amount=%.2f merchant=%r → fraud_prob=%.4f risk_score=%d",
+        "predict_fraud | amount=%.2f merchant=%r → ml=%d heuristic=%d final=%d",
         amount,
         merchant,
-        fraud_prob,
+        ml_score,
+        heuristic,
         risk_score,
     )
 
