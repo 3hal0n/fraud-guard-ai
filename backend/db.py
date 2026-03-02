@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
 import re
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, func
+from sqlalchemy import create_engine, Column, Integer, String, Float, Numeric, DateTime, ForeignKey, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -56,19 +57,22 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {"schema": "fraudguard"}
     id = Column(String, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=True)
+    email = Column(String, unique=True, index=True, nullable=False)
     plan = Column(String, default="FREE")
     daily_usage = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class Transaction(Base):
     __tablename__ = "transactions"
-    id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    amount = Column(Float, nullable=False)
-    risk_score = Column(Integer, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = {"schema": "fraudguard"}
+    id = Column(PG_UUID(as_uuid=False), primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("fraudguard.users.id"), nullable=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    risk_score = Column(Numeric(5, 4), nullable=False)  # 0-1 float, e.g. 0.9000
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 def create_tables():
@@ -90,7 +94,9 @@ def increment_usage(db, user: User, amount: int = 1):
 
 
 def save_transaction(db, tx_id: str, user_id: str | None, amount: float, risk_score: int):
-    tx = Transaction(id=tx_id, user_id=user_id, amount=amount, risk_score=risk_score, timestamp=datetime.utcnow())
+    # risk_score arrives as 0-100 int; DB column is numeric(5,4) so store as 0-1 float
+    score_float = round(risk_score / 100, 4)
+    tx = Transaction(id=tx_id, user_id=user_id, amount=amount, risk_score=score_float, created_at=datetime.utcnow())
     db.add(tx)
     db.commit()
     db.refresh(tx)
@@ -107,8 +113,10 @@ def create_user_if_not_exists(db, user_id: str, email: str | None = None, plan: 
             db.commit()
             db.refresh(user)
         return user
+    # Supabase has NOT NULL on email — use a placeholder when none is provided
+    effective_email = email or f"{user_id}@placeholder.local"
     # create new user
-    new = User(id=user_id, email=email, plan=(plan or "FREE"), daily_usage=0)
+    new = User(id=user_id, email=effective_email, plan=(plan or "FREE"), daily_usage=0)
     db.add(new)
     db.commit()
     db.refresh(new)

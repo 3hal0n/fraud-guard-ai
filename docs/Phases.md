@@ -110,3 +110,14 @@ Goal: Get URLs you can put on your CV.
 [ ] The "Wake Up" Ping: Set up UptimeRobot to ping your Render backend so it doesn't sleep.
 
 [ ] Readme: Write the "Senior Engineer" style README we discussed.
+
+Phase 6: B2B Enterprise Additions (Post-Launch)
+Goal: Upgrade the app from a tool to a full SaaS platform.
+
+[ ] Telemetry Dashboard: Update the /dashboard home page to fetch actual row counts from Supabase (e.g., "Total Scans: 42", "High Risk Detected: 3").
+
+[ ] Developer API Hub: Create a page where users can click "Generate API Key" (save a random UUID to their Supabase profile) so they can bypass the UI and hit your FastAPI endpoint directly via code.
+
+[ ] Bulk CSV Audit: Add a drag-and-drop zone where users can upload a CSV of 100 transactions, have FastAPI process them in a loop, and return the flagged rows.
+
+[ ] Senior README: Write a comprehensive README detailing the ML pipeline, the deterministic hash bridge, the SaaS architecture, and the database schema.

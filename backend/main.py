@@ -1,9 +1,11 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from predict import predict_fraud
+from predict import predict_fraud, load_models
 import uuid
 import os
-from db import SessionLocal, create_tables, get_user, increment_usage, save_transaction
+from db import SessionLocal, create_tables, get_user, increment_usage, save_transaction, Transaction as TxModel
 import logging
 
 logger = logging.getLogger("fraudguard")
@@ -11,25 +13,58 @@ logger = logging.getLogger("fraudguard")
 
 # NOTE: avoid creating DB tables at import-time to prevent startup failures
 
-class Transaction(BaseModel):
+class TransactionRequest(BaseModel):
+    """Validated payload from the Next.js frontend."""
     amount: float
     merchant: str
     category: str | None = None
     location: str | None = None
-    time: str | None = None
+    time: str | None = None          # e.g. "2026-02-26 13:13"
     user_id: str | None = None
 
-app = FastAPI(title="FraudGuard AI - Backend")
+# ---------------------------------------------------------------------------
+# Lifespan: load ML models + start background jobs once at startup
+# ---------------------------------------------------------------------------
 
-
-@app.on_event("startup")
-def _ensure_tables():
-    # Migrations should be used in production; keep import-time safety.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Runs startup logic before the server starts accepting requests,
+    and teardown logic when it shuts down."""
+    # ---- startup ----
     try:
-        # keep behavior non-fatal for dev if DB is unreachable
-        logger.info("Skipping create_tables at startup; use Alembic to manage migrations")
+        load_models()
+        logger.info("ML models loaded successfully via lifespan")
+    except Exception as exc:
+        # Log but do NOT crash the server; /analyze will return 500 with a
+        # clear message if the models are unavailable.
+        logger.error("Failed to load ML models at startup: %s", exc)
+
+    try:
+        _schedule_daily_reset()
+        logger.info("Scheduled daily usage-reset job")
     except Exception:
-        pass
+        logger.exception("Failed to start background jobs")
+
+    yield  # <- server is live and handling requests
+
+    # ---- shutdown (nothing to tear down currently) ----
+
+
+app = FastAPI(title="FraudGuard AI - Backend", lifespan=lifespan)
+
+_ALLOWED_ORIGINS = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 @app.post("/api/v1/webhook/clerk")
@@ -96,14 +131,6 @@ def _schedule_daily_reset():
     t0.start()
 
 
-@app.on_event("startup")
-def _start_background_jobs():
-    try:
-        _schedule_daily_reset()
-        logger.info("Scheduled daily reset job")
-    except Exception:
-        logger.exception("Failed to start background jobs")
-
 @app.get("/")
 async def root():
     return {"message": "FraudGuard AI backend is running"}
@@ -124,34 +151,139 @@ async def db_status():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/v1/analyze")
-async def analyze(transaction: Transaction):
+@app.get("/api/v1/user/{user_id}")
+async def get_user_info(user_id: str):
+    """Return plan and daily_usage for a given user.
+
+    Falls back to a default FREE-plan stub when the DB is unreachable
+    so the frontend can still render without a 500 error.
+    """
     db = SessionLocal()
     try:
-        user_id = transaction.user_id
-        # If user_id provided, enforce guardrail
-        if user_id:
-            user = get_user(db, user_id)
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
-            # FREE plan guardrail
-            if (user.plan or "FREE").upper() == "FREE" and (user.daily_usage or 0) >= 5:
-                raise HTTPException(status_code=402, detail="Daily usage limit exceeded for FREE plan")
-
-        # Run prediction
-        score, status = predict_fraud(transaction.model_dump())
-
-        # Persist transaction and increment usage if user exists
-        tx_id = str(uuid.uuid4())
-        save_transaction(db, tx_id, user_id, float(transaction.amount), int(score))
-        if user_id:
-            user = get_user(db, user_id)
-            increment_usage(db, user, 1)
-
-        return {"risk_score": score, "status": status}
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+        daily_limit = 5 if (user.plan or "FREE").upper() == "FREE" else None
+        return {
+            "user_id": user.id,
+            "email": user.email,
+            "plan": user.plan or "FREE",
+            "daily_usage": user.daily_usage or 0,
+            "daily_limit": daily_limit,
+            "db_available": True,
+        }
     except HTTPException:
         raise
     except Exception as e:
+        # DB unreachable — return a safe default so the frontend doesn't break
+        logger.warning("get_user_info DB error for %s: %s", user_id, e)
+        return {
+            "user_id": user_id,
+            "email": None,
+            "plan": "FREE",
+            "daily_usage": 0,
+            "daily_limit": 5,
+            "db_available": False,
+        }
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@app.get("/api/v1/transactions/{user_id}")
+async def get_transactions(user_id: str, limit: int = 20):
+    """Return recent transactions for a user, newest first.
+
+    Returns an empty list when DB is unreachable so the frontend
+    renders gracefully instead of crashing.
+    """
+    db = SessionLocal()
+    try:
+        txns = (
+            db.query(TxModel)
+            .filter(TxModel.user_id == user_id)
+            .order_by(TxModel.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": t.id,
+                "amount": float(t.amount),
+                "risk_score": float(t.risk_score),  # already 0-1 in DB
+                "status": "risk" if float(t.risk_score) >= 0.50 else "safe",
+                "timestamp": t.created_at.isoformat() if t.created_at else None,
+            }
+            for t in txns
+        ]
+    except Exception as e:
+        logger.warning("get_transactions DB error for %s: %s", user_id, e)
+        return []  # empty list — frontend handles this gracefully
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@app.post("/api/v1/analyze")
+async def analyze(transaction: TransactionRequest):
+    # SessionLocal() is lazy — the actual TCP connection happens on first query.
+    # We therefore wrap individual DB operations (not SessionLocal) in try/except.
+    db = SessionLocal()
+    try:
+        user_id = transaction.user_id
+        db_ok = True
+
+        # ── Guardrail (requires DB) ─────────────────────────────────────────
+        if user_id:
+            try:
+                user = get_user(db, user_id)
+                if not user:
+                    # Auto-create the user row on first scan (Clerk is the auth
+                    # source of truth; we just need a DB record for quota tracking)
+                    from db import create_user_if_not_exists
+                    user = create_user_if_not_exists(db, user_id)
+                if (user.plan or "FREE").upper() == "FREE" and (user.daily_usage or 0) >= 5:
+                    raise HTTPException(status_code=402, detail="Daily usage limit exceeded for FREE plan")
+            except HTTPException:
+                raise  # propagate 402 as intended
+            except Exception as guard_exc:
+                # DB unreachable — skip guardrail, log, continue with inference
+                logger.warning("Guardrail DB lookup failed; skipping: %s", guard_exc)
+                db_ok = False
+
+        # ── Inference ───────────────────────────────────────────────────────
+        score, is_fraud = predict_fraud(
+            amount=transaction.amount,
+            merchant=transaction.merchant,
+            location=transaction.location or "",
+            time_str=transaction.time or "",
+        )
+        status = "risk" if is_fraud else "safe"
+
+        # ── Persist (best-effort; failure must not mask the result) ─────────
+        if db_ok:
+            try:
+                tx_id = str(uuid.uuid4())
+                save_transaction(db, tx_id, user_id, float(transaction.amount), int(score))
+                if user_id:
+                    user = get_user(db, user_id)
+                    increment_usage(db, user, 1)
+            except Exception as persist_exc:
+                logger.warning("Failed to persist transaction: %s", persist_exc)
+
+        return {"risk_score": round(score / 100, 4), "is_fraud": is_fraud, "status": status, "db_available": db_ok}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in /api/v1/analyze: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass

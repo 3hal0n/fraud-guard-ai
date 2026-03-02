@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { getUserInfo, UserInfo } from "@/lib/api";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -10,6 +12,13 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
+  const { user } = useUser();
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getUserInfo(user.id).then(setUserInfo).catch(() => null);
+  }, [user?.id]);
 
   const navItems = [
     {
@@ -91,11 +100,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <div className="p-4 border-t border-slate-700/50">
           <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-navy-800 transition-all cursor-pointer">
             <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center text-navy-950 font-semibold">
-              A
+              {(user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0] || "?").toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">Alex</p>
-              <p className="text-xs text-slate-500 truncate">Free Plan</p>
+              <p className="text-sm font-medium text-foreground truncate">
+                {user?.firstName || user?.emailAddresses?.[0]?.emailAddress || "Loading..."}
+              </p>
+              <p className="text-xs text-slate-500 truncate">
+                {userInfo ? `${userInfo.plan === "PRO" ? "Pro" : "Free"} Plan` : "Free Plan"}
+              </p>
             </div>
             <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

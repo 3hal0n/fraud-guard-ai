@@ -2,13 +2,19 @@
 
 import AppLayout from "@/components/AppLayout";
 import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { getUserInfo, getTransactions, UserInfo, TransactionRecord } from "@/lib/api";
 
 export default function DashboardPage() {
   const [greeting, setGreeting] = useState("");
-  const userName = "Alex";
-  const usedChecks = 3;
-  const maxChecks = 5;
-  const usagePercentage = (usedChecks / maxChecks) * 100;
+  const { user } = useUser();
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [recentTxns, setRecentTxns] = useState<TransactionRecord[]>([]);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+
+  const usedChecks = userInfo?.daily_usage ?? 0;
+  const maxChecks = userInfo?.daily_limit ?? 5;
+  const usagePercentage = maxChecks > 0 ? Math.min((usedChecks / maxChecks) * 100, 100) : 0;
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -17,13 +23,28 @@ export default function DashboardPage() {
     else setGreeting("Good evening");
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    setLoadingInfo(true);
+    Promise.all([
+      getUserInfo(user.id),
+      getTransactions(user.id, 100),   // fetch up to 100 for accurate stats
+    ])
+      .then(([info, txns]) => {
+        setUserInfo(info);
+        setRecentTxns(txns);
+      })
+      .catch(() => null)
+      .finally(() => setLoadingInfo(false));
+  }, [user?.id]);
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Welcome Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            {greeting}, {userName}.
+            {greeting}, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "there"}.
           </h1>
           <p className="text-slate-500">Monitor your fraud detection activity and insights</p>
         </div>
@@ -36,33 +57,45 @@ export default function DashboardPage() {
               <p className="text-sm text-slate-500">Track your transaction checks</p>
             </div>
             <div className="px-3 py-1 bg-teal-500/20 border border-teal-500/30 rounded-full">
-              <span className="text-sm font-medium text-teal-400">Free Plan</span>
+              <span className="text-sm font-medium text-teal-400">
+                {loadingInfo ? "..." : userInfo?.plan === "PRO" ? "Pro Plan" : "Free Plan"}
+              </span>
             </div>
           </div>
 
           <div className="mb-3">
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-4xl font-bold text-foreground">{usedChecks}</span>
-              <span className="text-xl text-slate-500">/ {maxChecks}</span>
-              <span className="text-sm text-slate-500 ml-2">Free Checks Used Today</span>
+              <span className="text-4xl font-bold text-foreground">{loadingInfo ? "–" : usedChecks}</span>
+              <span className="text-xl text-slate-500">/ {loadingInfo ? "–" : (userInfo?.daily_limit === null ? "∞" : maxChecks)}</span>
+              <span className="text-sm text-slate-500 ml-2">
+                {userInfo?.plan === "PRO" ? "Pro Checks Used Today" : "Free Checks Used Today"}
+              </span>
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="relative w-full h-3 bg-navy-900 rounded-full overflow-hidden">
-            <div
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all duration-500"
-              style={{ width: `${usagePercentage}%` }}
-            />
-          </div>
+          {userInfo?.daily_limit !== null && (
+            <div className="relative w-full h-3 bg-navy-900 rounded-full overflow-hidden">
+              <div
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-teal-500 to-teal-400 transition-all duration-500"
+                style={{ width: `${usagePercentage}%` }}
+              />
+            </div>
+          )}
 
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-slate-500">
-              {maxChecks - usedChecks} checks remaining today
+              {loadingInfo
+                ? "Loading..."
+                : userInfo?.daily_limit === null
+                ? "Unlimited checks available"
+                : `${Math.max(0, maxChecks - usedChecks)} checks remaining today`}
             </p>
-            <a href="/dashboard/billing" className="text-sm text-teal-400 hover:text-teal-300 font-medium transition-colors">
-              Upgrade to Pro →
-            </a>
+            {userInfo?.plan !== "PRO" && (
+              <a href="/dashboard/billing" className="text-sm text-teal-400 hover:text-teal-300 font-medium transition-colors">
+                Upgrade to Pro →
+              </a>
+            )}
           </div>
         </div>
 
@@ -73,7 +106,9 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between mb-6">
               <div>
                 <p className="text-sm text-slate-500 mb-1">Total Scans This Month</p>
-                <h3 className="text-4xl font-bold text-foreground">847</h3>
+                <h3 className="text-4xl font-bold text-foreground">
+                  {loadingInfo ? "–" : recentTxns.length}
+                </h3>
               </div>
               <div className="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,15 +116,9 @@ export default function DashboardPage() {
                 </svg>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-sm text-teal-400">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                </svg>
-                +12.5%
-              </span>
-              <span className="text-sm text-slate-500">vs last month</span>
-            </div>
+            <p className="text-sm text-slate-500">
+              {loadingInfo ? "" : recentTxns.length === 0 ? "No scans yet" : "Transactions analyzed"}
+            </p>
           </div>
 
           {/* At-Risk Transactions */}
@@ -97,7 +126,9 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between mb-6">
               <div>
                 <p className="text-sm text-slate-500 mb-1">At-Risk Transactions Detected</p>
-                <h3 className="text-4xl font-bold text-coral-500">23</h3>
+                <h3 className="text-4xl font-bold text-coral-500">
+                  {loadingInfo ? "–" : recentTxns.filter((t) => t.status === "risk").length}
+                </h3>
               </div>
               <div className="w-12 h-12 bg-coral-500/20 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-coral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,62 +136,65 @@ export default function DashboardPage() {
                 </svg>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-sm text-coral-400">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586 3.707 5.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clipRule="evenodd" />
-                </svg>
-                -8.3%
-              </span>
-              <span className="text-sm text-slate-500">vs last month</span>
-            </div>
+            <p className="text-sm text-slate-500">
+              {loadingInfo ? "" : recentTxns.length === 0
+                ? "No scans yet"
+                : `${Math.round((recentTxns.filter((t) => t.status === "risk").length / recentTxns.length) * 100)}% risk rate`}
+            </p>
           </div>
         </div>
 
         {/* Recent Activity */}
         <div className="glass rounded-2xl p-6">
           <h2 className="text-xl font-semibold text-foreground mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            {[
-              { time: "2 minutes ago", status: "safe", amount: "$1,245.00", merchant: "Amazon.com" },
-              { time: "15 minutes ago", status: "risk", amount: "$5,890.00", merchant: "Unknown Vendor" },
-              { time: "1 hour ago", status: "safe", amount: "$42.50", merchant: "Starbucks" },
-              { time: "3 hours ago", status: "safe", amount: "$199.99", merchant: "Best Buy" },
-            ].map((activity, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 rounded-lg hover:bg-navy-900 transition-all border border-slate-800"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    activity.status === "safe" ? "bg-teal-500/20" : "bg-coral-500/20"
-                  }`}>
-                    {activity.status === "safe" ? (
-                      <svg className="w-5 h-5 text-teal-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5 text-coral-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    )}
+          {loadingInfo ? (
+            <p className="text-slate-500 text-sm py-4">Loading transactions...</p>
+          ) : recentTxns.length === 0 ? (
+            <p className="text-slate-500 text-sm py-4">No transactions yet. <a href="/dashboard/analyze" className="text-teal-400 hover:text-teal-300">Scan a new one →</a></p>
+          ) : (
+            <div className="space-y-4">
+              {recentTxns.slice(0, 4).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between p-4 rounded-lg hover:bg-navy-900 transition-all border border-slate-800"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      activity.status === "safe" ? "bg-teal-500/20" : "bg-coral-500/20"
+                    }`}>
+                      {activity.status === "safe" ? (
+                        <svg className="w-5 h-5 text-teal-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-coral-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        ${Number(activity.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {activity.timestamp ? new Date(activity.timestamp).toLocaleString() : "—"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">{activity.merchant}</p>
-                    <p className="text-sm text-slate-500">{activity.time}</p>
+                  <div className="text-right">
+                    <p className="font-semibold text-foreground">
+                      Risk: {Math.round(activity.risk_score * 100)}%
+                    </p>
+                    <p className={`text-sm font-medium ${
+                      activity.status === "safe" ? "text-teal-400" : "text-coral-400"
+                    }`}>
+                      {activity.status === "safe" ? "SAFE" : "HIGH RISK"}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-foreground">{activity.amount}</p>
-                  <p className={`text-sm font-medium ${
-                    activity.status === "safe" ? "text-teal-400" : "text-coral-400"
-                  }`}>
-                    {activity.status === "safe" ? "SAFE" : "HIGH RISK"}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
