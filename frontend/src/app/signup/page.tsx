@@ -9,43 +9,25 @@ export default function SignUpPage() {
   const planParam = searchParams.get("plan");
 
   return (
-    <div className="min-h-screen bg-navy-950 flex items-center justify-center px-6 py-12">
-      <div className="relative w-full max-w-md">
-        <Link href="/" className="flex items-center gap-2 justify-center mb-8">
-          <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-navy-950" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <span className="text-2xl font-semibold text-foreground">FraudGuard AI</span>
-        </Link>
+    <div className="min-h-screen bg-navy-950 flex items-center justify-center px-4 py-10">
+      <main className="w-full max-w-md">
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
+          <p className="text-sm text-slate-500">Start protecting your transactions today</p>
+        </div>
 
         {planParam === "pro" && (
           <div className="mb-4 text-center">
             <span className="inline-flex items-center gap-2 px-4 py-2 bg-teal-500/20 border border-teal-500/30 rounded-full text-teal-400 text-sm font-medium">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
               Pro Plan Selected
             </span>
           </div>
         )}
 
-        <div className="glass rounded-2xl p-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Create your account</h1>
-          <p className="text-slate-500 mb-6">Start protecting your transactions today</p>
+        <div className="bg-navy-900/60 border border-slate-800 rounded-2xl p-6">
           <SignUp routing="hash" afterSignUpUrl="/dashboard" />
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
-              Already have an account?{" "}
-              <Link href="/login" className="text-teal-400 hover:text-teal-300 font-medium transition-colors">
-                Sign in
-              </Link>
-            </p>
-          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

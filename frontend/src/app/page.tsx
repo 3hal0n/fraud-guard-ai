@@ -1,4 +1,6 @@
 import Link from "next/link";
+// DarkVeil is a client-side WebGL effect — import the client component directly.
+import DarkVeil from '../components/DarkVeil';
 
 export default function LandingPage() {
   return (
@@ -18,9 +20,23 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
+
+          {/* DarkVeil canvas: responsive height, pointer-events none */}
+          <div className="absolute inset-0 flex items-start justify-center pointer-events-none">
+            <div className="w-full h-[320px] md:h-[420px] lg:h-[600px] relative">
+              <DarkVeil
+                hueShift={10}
+                noiseIntensity={0.25}
+                scanlineIntensity={0.06}
+                speed={0.45}
+                scanlineFrequency={0.012}
+                warpAmount={0.06}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="relative max-w-5xl mx-auto text-center">
+        <div className="relative max-w-5xl mx-auto text-center z-10">
           <h1 className="text-6xl font-bold text-foreground mb-6 leading-tight">
             Stop Transaction Fraud
             <br />

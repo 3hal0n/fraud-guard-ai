@@ -1,6 +1,8 @@
+"use client";
+
 import { useRef, useEffect } from 'react';
 import { Renderer, Program, Mesh, Triangle, Vec2 } from 'ogl';
-import './DarkVeil.css';
+import styles from './DarkVeil.module.css';
 
 const vertex = `
 attribute vec2 position;
@@ -153,5 +155,5 @@ export default function DarkVeil({
       window.removeEventListener('resize', resize);
     };
   }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale]);
-  return <canvas ref={ref} className="darkveil-canvas" />;
+  return <canvas ref={ref} className={styles.darkveilCanvas} />;
 }
