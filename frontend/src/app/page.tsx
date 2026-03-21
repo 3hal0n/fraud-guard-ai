@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import SocialProof from "@/components/SocialProof";
 
 type CardData = {
   title: string;
@@ -122,10 +123,19 @@ export default function LandingPage() {
             className="flex items-center gap-4 mb-10"
           >
             <div className="flex -space-x-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-gradient-to-br from-cyan-900 to-slate-800 flex items-center justify-center text-[10px] font-bold">
-                  U{i}
-                </div>
+              {[
+                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=96&q=80&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=96&q=80&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=96&q=80&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=96&q=80&auto=format&fit=crop",
+              ].map((src, i) => (
+                <img
+                  key={src}
+                  src={src}
+                  alt={`Team member ${i + 1}`}
+                  className="w-8 h-8 rounded-full border-2 border-black object-cover"
+                  loading="lazy"
+                />
               ))}
             </div>
             <span className="text-sm text-slate-400">Trusted already by <span className="text-white font-medium">1.2k+</span> teams</span>
@@ -226,6 +236,8 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
+
+      <SocialProof />
 
       {/* --- FEATURES SECTION (Reduced top padding) --- */}
       <section className="w-full pt-20 pb-10 bg-black relative z-10">

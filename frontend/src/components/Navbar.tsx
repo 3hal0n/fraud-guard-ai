@@ -40,7 +40,9 @@ export default function Navbar() {
               </Link>
               <UserButton />
             </div>
-            <UserButton />
+            <div className="md:hidden">
+              <UserButton />
+            </div>
           </SignedIn>
 
           <SignedOut>

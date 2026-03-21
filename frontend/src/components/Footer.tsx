@@ -131,8 +131,8 @@ export default function Footer() {
       </div>
 
       {/* Massive Watermark (Clipped) */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3 pointer-events-none select-none hidden sm:block">
-        <h1 className="text-[8rem] sm:text-[12rem] md:text-[16rem] lg:text-[20rem] font-bold text-white/[0.02] tracking-tighter leading-none whitespace-nowrap">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3 pointer-events-none select-none block">
+        <h1 className="text-[5rem] sm:text-[8rem] md:text-[12rem] lg:text-[16rem] font-bold text-cyan-400/12 tracking-tighter leading-none whitespace-nowrap">
           FraudGuard
         </h1>
       </div>
