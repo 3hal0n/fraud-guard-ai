@@ -4,6 +4,7 @@ import AppLayout from "@/components/AppLayout";
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { getTransactions, TransactionRecord } from "@/lib/api";
+import { motion } from "framer-motion";
 
 export default function HistoryPage() {
   const { user } = useUser();
@@ -25,125 +26,89 @@ export default function HistoryPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Transaction History</h1>
-            <p className="text-slate-500">Review all your fraud detection scans</p>
+            <h1 className="text-3xl font-medium text-white mb-2 tracking-tight">Ledger</h1>
+            <p className="text-slate-400">Review all your past fraud detection scans.</p>
           </div>
-          <button className="px-4 py-2 bg-navy-800 hover:bg-navy-700 border border-slate-700 text-foreground rounded-lg font-medium transition-all flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            Filter
+          <button className="px-5 py-2.5 bg-[#0A0A0A] hover:bg-[#121214] border border-white/10 text-white rounded-xl font-medium transition-all flex items-center gap-2 text-sm w-fit">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+            Filter View
           </button>
-        </div>
+        </motion.div>
 
-        {/* Stats Summary */}
-        <div className="grid md:grid-cols-4 gap-4">
-          <div className="glass rounded-xl p-4">
-            <p className="text-sm text-slate-500 mb-1">Total Scans</p>
-            <p className="text-2xl font-bold text-foreground">{loading ? "–" : transactions.length}</p>
+        {/* Stats Strip */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#0A0A0A] border border-white/5 rounded-[1.5rem] p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Total Scans</p>
+            <p className="text-3xl font-light text-white">{loading ? "–" : transactions.length}</p>
           </div>
-          <div className="glass rounded-xl p-4">
-            <p className="text-sm text-slate-500 mb-1">Safe Transactions</p>
-            <p className="text-2xl font-bold text-teal-400">{loading ? "–" : safeCount}</p>
+          <div className="bg-[#0A0A0A] border border-white/5 rounded-[1.5rem] p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Safe</p>
+            <p className="text-3xl font-light text-cyan-400">{loading ? "–" : safeCount}</p>
           </div>
-          <div className="glass rounded-xl p-4">
-            <p className="text-sm text-slate-500 mb-1">High Risk</p>
-            <p className="text-2xl font-bold text-coral-500">{loading ? "–" : riskCount}</p>
+          <div className="bg-[#0A0A0A] border border-white/5 rounded-[1.5rem] p-5 relative overflow-hidden">
+             <div className="absolute inset-0 bg-red-500/5" />
+            <p className="text-xs text-slate-500 uppercase tracking-widest mb-1 relative z-10">High Risk</p>
+            <p className="text-3xl font-light text-red-500 relative z-10">{loading ? "–" : riskCount}</p>
           </div>
-          <div className="glass rounded-xl p-4">
-            <p className="text-sm text-slate-500 mb-1">Risk Rate</p>
-            <p className="text-2xl font-bold text-foreground">
+          <div className="bg-[#0A0A0A] border border-white/5 rounded-[1.5rem] p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Risk Rate</p>
+            <p className="text-3xl font-light text-white">
               {loading || transactions.length === 0 ? "–" : `${Math.round((riskCount / transactions.length) * 100)}%`}
             </p>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Transaction List */}
-        <div className="glass rounded-2xl overflow-hidden">
+        {/* Transaction Ledger */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#0A0A0A] border border-white/5 rounded-[2rem] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-navy-900 border-b border-slate-700">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Transaction
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Risk Score
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Time
-                  </th>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#121214] border-b border-white/5">
+                  <th className="px-6 py-5 text-xs font-semibold text-slate-500 uppercase tracking-widest">Transaction ID</th>
+                  <th className="px-6 py-5 text-xs font-semibold text-slate-500 uppercase tracking-widest">Amount</th>
+                  <th className="px-6 py-5 text-xs font-semibold text-slate-500 uppercase tracking-widest">Risk Score</th>
+                  <th className="px-6 py-5 text-xs font-semibold text-slate-500 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-5 text-xs font-semibold text-slate-500 uppercase tracking-widest">Time</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-white/5">
                 {loading ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
-                      Loading transactions...
-                    </td>
-                  </tr>
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">Loading ledger...</td></tr>
                 ) : error ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-coral-400">
-                      {error}
-                    </td>
-                  </tr>
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-red-500 text-sm">{error}</td></tr>
                 ) : transactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
-                      No transactions yet.{" "}
-                      <a href="/dashboard/analyze" className="text-teal-400 hover:text-teal-300">
-                        Scan your first transaction →
-                      </a>
-                    </td>
-                  </tr>
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">Ledger is empty.</td></tr>
                 ) : (
                   transactions.map((txn) => {
                     const riskPct = Math.round(txn.risk_score * 100);
                     return (
-                      <tr key={txn.id} className="hover:bg-navy-900 transition-colors">
+                      <tr key={txn.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-6 py-4">
-                          <p className="font-medium text-foreground font-mono text-sm">{txn.id}</p>
+                          <span className="text-slate-400 font-mono text-xs">{txn.id.substring(0,12)}...</span>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="font-semibold text-foreground">
-                            ${Number(txn.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                          </p>
+                          <span className="text-white font-medium text-sm">${Number(txn.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 max-w-[100px] h-2 bg-navy-900 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${txn.status === "risk" ? "bg-coral-500" : "bg-teal-500"}`}
-                                style={{ width: `${riskPct}%` }}
-                              />
+                          <div className="flex items-center gap-3">
+                            <div className="w-16 h-1.5 bg-[#121214] rounded-full overflow-hidden">
+                              <div className={`h-full ${txn.status === "risk" ? "bg-red-500" : "bg-cyan-500"}`} style={{ width: `${riskPct}%` }} />
                             </div>
-                            <span className={`text-sm font-medium ${txn.status === "risk" ? "text-coral-400" : "text-teal-400"}`}>
-                              {riskPct}%
-                            </span>
+                            <span className={`text-xs font-medium ${txn.status === "risk" ? "text-red-500" : "text-white"}`}>{riskPct}%</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                            txn.status === "risk"
-                              ? "bg-coral-500/20 border border-coral-500/30 text-coral-400"
-                              : "bg-teal-500/20 border border-teal-500/30 text-teal-400"
-                          }`}>
-                            {txn.status === "risk" ? "High Risk" : "Safe"}
+                          <span className={`inline-flex px-2.5 py-1 rounded text-[10px] font-bold tracking-widest uppercase border ${txn.status === "risk" ? "bg-red-500/10 border-red-500/20 text-red-500" : "bg-cyan-500/10 border-cyan-500/20 text-cyan-400"}`}>
+                            {txn.status === "risk" ? "Blocked" : "Safe"}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-foreground text-sm">{new Date(txn.timestamp).toLocaleString()}</p>
+                          <span className="text-slate-400 text-xs">{new Date(txn.timestamp).toLocaleString()}</span>
                         </td>
                       </tr>
                     );
@@ -152,16 +117,12 @@ export default function HistoryPage() {
               </tbody>
             </table>
           </div>
-
-          {/* Footer */}
           {!loading && !error && transactions.length > 0 && (
-            <div className="border-t border-slate-800 px-6 py-4">
-              <p className="text-sm text-slate-500">
-                Showing <span className="font-medium text-foreground">{transactions.length}</span> transaction{transactions.length !== 1 ? "s" : ""}
-              </p>
+            <div className="border-t border-white/5 px-6 py-4 bg-[#121214]">
+              <p className="text-xs text-slate-500 tracking-wider uppercase">Showing {transactions.length} entries</p>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </AppLayout>
   );
