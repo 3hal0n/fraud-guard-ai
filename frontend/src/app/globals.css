@@ -2,7 +2,7 @@
 
 :root {
   /* FinTech Dark Mode Theme */
-  --navy-950: #0a0e1a;
+  --navy-950: #000000;
   --navy-900: #0f1729;
   --navy-800: #1a2235;
   --navy-700: #243047;
@@ -59,15 +59,16 @@ body {
 
 /* Glassmorphism utility classes */
 .glass {
-  background: rgba(26, 34, 53, 0.7);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(100, 116, 139, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.35);
 }
 
 .glass-light {
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(100, 116, 139, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 /* Smooth transitions */
@@ -87,7 +88,7 @@ button, a {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--navy-900);
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {

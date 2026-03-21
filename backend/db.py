@@ -50,6 +50,10 @@ if not DATABASE_URL:
 else:
     engine = create_engine(DATABASE_URL)
 
+IS_SQLITE = bool(DATABASE_URL and DATABASE_URL.startswith("sqlite"))
+DB_SCHEMA = None if IS_SQLITE else "fraudguard"
+TX_ID_TYPE = String if IS_SQLITE else PG_UUID(as_uuid=False)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -57,7 +61,7 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = {"schema": "fraudguard"}
+    __table_args__ = {"schema": DB_SCHEMA} if DB_SCHEMA else {}
     id = Column(String, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     plan = Column(String, default="FREE")
@@ -67,9 +71,9 @@ class User(Base):
 
 class Transaction(Base):
     __tablename__ = "transactions"
-    __table_args__ = {"schema": "fraudguard"}
-    id = Column(PG_UUID(as_uuid=False), primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("fraudguard.users.id"), nullable=True)
+    __table_args__ = {"schema": DB_SCHEMA} if DB_SCHEMA else {}
+    id = Column(TX_ID_TYPE, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id" if IS_SQLITE else "fraudguard.users.id"), nullable=True)
     amount = Column(Numeric(12, 2), nullable=False)
     risk_score = Column(Numeric(5, 4), nullable=False)  # 0-1 float, e.g. 0.9000
     created_at = Column(DateTime(timezone=True), server_default=func.now())
