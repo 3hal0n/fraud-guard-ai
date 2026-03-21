@@ -276,7 +276,7 @@ async def analyze(transaction: TransactionRequest):
             except Exception as persist_exc:
                 logger.warning("Failed to persist transaction: %s", persist_exc)
 
-        return {"risk_score": round(score / 100, 4), "is_fraud": is_fraud, "status": status, "db_available": db_ok}
+        return {"risk_score": int(score), "is_fraud": is_fraud, "status": status, "db_available": db_ok}
     except HTTPException:
         raise
     except Exception as e:

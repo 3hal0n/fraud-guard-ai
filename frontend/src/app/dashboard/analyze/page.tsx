@@ -55,7 +55,8 @@ export default function AnalyzePage() {
     try {
       const result = await analyzeTransaction({ amount: data.amount, merchant: data.category, category: data.category, location: data.location, time: data.time, user_id: user?.id });
       const elapsed = Math.round(performance.now() - t0);
-      setScanResult({ riskScore: Math.round(result.risk_score * 100), status: result.status, elapsed });
+      const normalizedRiskScore = result.risk_score <= 1 ? Math.round(result.risk_score * 100) : Math.round(result.risk_score);
+      setScanResult({ riskScore: normalizedRiskScore, status: result.status, elapsed });
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       if (apiErr.status === 402) setApiError("Daily limit reached. Upgrade to Pro for unlimited scans.");
