@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Github, Mail, Linkedin, Twitter } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -46,7 +45,7 @@ export default function Footer() {
                   />
                 </div>
                 <button className="p-2.5 sm:p-3 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors border border-white/5 active:scale-95 flex-shrink-0">
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRightIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -123,10 +122,10 @@ export default function Footer() {
           </div>
 
           <div className="flex items-center gap-4 sm:gap-6">
-            <SocialIcon icon={Mail} label="Email" href="mailto:support@fraudguardai.com" />
-            <SocialIcon icon={Github} label="GitHub" href="#" />
-            <SocialIcon icon={Twitter} label="Twitter" href="#" />
-            <SocialIcon icon={Linkedin} label="LinkedIn" href="#" />
+            <SocialIcon icon={MailIcon} label="Email" href="mailto:support@fraudguardai.com" />
+            <SocialIcon icon={GithubIcon} label="GitHub" href="#" />
+            <SocialIcon icon={TwitterIcon} label="Twitter" href="#" />
+            <SocialIcon icon={LinkedinIcon} label="LinkedIn" href="#" />
           </div>
         </div>
       </div>
@@ -157,5 +156,45 @@ function SocialIcon({ icon: Icon, label, href }: SocialIconProps) {
     >
       <Icon className="w-5 h-5" />
     </a>
+  );
+}
+
+function ArrowRightIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+function MailIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l9 6 9-6m-18 8h18a2 2 0 002-2V8a2 2 0 00-2-2H3a2 2 0 00-2 2v6a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+function GithubIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 008 10.93c.58.1.79-.25.79-.56v-2.18c-3.25.7-3.93-1.39-3.93-1.39-.53-1.34-1.29-1.7-1.29-1.7-1.05-.71.08-.7.08-.7 1.16.08 1.78 1.2 1.78 1.2 1.03 1.76 2.7 1.25 3.36.95.1-.75.4-1.25.73-1.54-2.6-.29-5.34-1.3-5.34-5.8 0-1.28.46-2.33 1.2-3.15-.12-.3-.52-1.5.12-3.13 0 0 .98-.31 3.2 1.2A11.1 11.1 0 0112 6.1c.98 0 1.97.13 2.9.38 2.22-1.5 3.2-1.2 3.2-1.2.64 1.63.24 2.83.12 3.13.75.82 1.2 1.87 1.2 3.15 0 4.5-2.74 5.5-5.36 5.79.42.36.79 1.08.79 2.19v3.24c0 .31.2.66.8.55A11.5 11.5 0 0023.5 12C23.5 5.65 18.35.5 12 .5z" />
+    </svg>
+  );
+}
+
+function TwitterIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M18.9 2H22l-6.77 7.74L23 22h-6.1l-4.77-6.24L6.67 22H3.55l7.24-8.27L1 2h6.24l4.31 5.7L18.9 2zm-1.07 18h1.69L6.3 3.89H4.5L17.83 20z" />
+    </svg>
+  );
+}
+
+function LinkedinIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M4.98 3.5C4.98 4.88 3.86 6 2.49 6S0 4.88 0 3.5 1.12 1 2.49 1s2.49 1.12 2.49 2.5zM.5 8h4V23h-4V8zm7 0h3.84v2.05h.06c.54-1.02 1.84-2.1 3.79-2.1 4.05 0 4.8 2.66 4.8 6.12V23h-4v-7.9c0-1.88-.03-4.3-2.62-4.3-2.63 0-3.03 2.06-3.03 4.17V23h-4V8z" />
+    </svg>
   );
 }
