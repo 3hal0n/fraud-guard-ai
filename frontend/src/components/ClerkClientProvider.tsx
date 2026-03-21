@@ -8,11 +8,12 @@ export default function ClerkClientProvider({ children }: { children: React.Reac
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
   if (!publishableKey) {
-    // Fail fast during build so CI shows a clear error about missing Clerk key
-    // (avoid using a placeholder key that hides the real configuration problem).
-    // Keeping this console.error helps diagnose missing secrets in CI logs.
+    // Don't initialize Clerk during builds or CI when the publishable key isn't provided.
+    // Returning children without `ClerkProvider` prevents @clerk/nextjs from throwing
+    // a missing-publishableKey error during prerendering.
     // eslint-disable-next-line no-console
-    console.error("Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY environment variable.");
+    console.warn("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY not set — skipping Clerk initialization.");
+    return <>{children}</>;
   }
 
   return <ClerkProvider publishableKey={publishableKey}>{children}</ClerkProvider>;
