@@ -207,13 +207,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800 py-12 px-6 mt-20">
-        <div className="max-w-7xl mx-auto text-center text-slate-500 text-sm">
-          <p>&copy; 2026 FraudGuard AI. All rights reserved. SOC 2 Type II Compliant.</p>
-        </div>
-      </footer>
     </div>
   );
 }
