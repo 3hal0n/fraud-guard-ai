@@ -1,7 +1,7 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { getUserInfo, getTransactions, UserInfo, TransactionRecord } from "@/lib/api";
 import { motion } from "framer-motion";
@@ -17,6 +17,50 @@ export default function DashboardPage() {
   const usedChecks = userInfo?.daily_usage ?? 0;
   const maxChecks = userInfo?.daily_limit ?? 5;
   const usagePercentage = maxChecks > 0 ? Math.min((usedChecks / maxChecks) * 100, 100) : 0;
+  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const { monthlyBars, monthlyLine, lineMax, linePoints, totalVolume, blockedPercent, avgAmount } = useMemo(() => {
+    const bars = new Array(12).fill(0);
+    const sums = new Array(12).fill(0);
+    const counts = new Array(12).fill(0);
+    let total = 0;
+    let blocked = 0;
+    let txCount = 0;
+
+    recentTxns.forEach((t) => {
+      if (!t.timestamp) return;
+      const d = new Date(t.timestamp);
+      if (Number.isNaN(d.getTime())) return;
+      const m = d.getMonth();
+      bars[m] += Number(t.amount || 0);
+      sums[m] += Number(t.amount || 0);
+      counts[m] += 1;
+      total += Number(t.amount || 0);
+      if (t.status === "risk") blocked += 1;
+      txCount += 1;
+    });
+
+    const avgPerMonth = sums.map((s, i) => (counts[i] ? s / counts[i] : 0));
+    const maxVal = Math.max(70, ...bars, ...avgPerMonth);
+
+    const points = avgPerMonth
+      .map((value, index) => {
+        const x = (index / (avgPerMonth.length - 1)) * 100;
+        const y = 100 - (value / maxVal) * 100;
+        return `${x},${y}`;
+      })
+      .join(" ");
+
+    return {
+      monthlyBars: bars,
+      monthlyLine: avgPerMonth,
+      lineMax: maxVal,
+      linePoints: points,
+      totalVolume: total,
+      blockedPercent: txCount ? Math.round((blocked / txCount) * 100) : 0,
+      avgAmount: txCount ? total / txCount : 0,
+    };
+  }, [recentTxns]);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -54,8 +98,9 @@ export default function DashboardPage() {
         {/* Top Row: Usage & Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Usage Tracker Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-2xl">
+          {/* Left Column: Usage Tracker + Small Stats */}
+          <div className="flex flex-col gap-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col gap-5 shadow-2xl lg:self-start">
             <div>
               <div className="flex items-start justify-between mb-6">
                 <div>
@@ -82,26 +127,46 @@ export default function DashboardPage() {
                   />
                 </div>
               )}
-            </div>
+              </div>
 
-            <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
-              <p className="text-xs text-slate-400">
-                {loadingInfo ? "Loading..." : userInfo?.daily_limit === null ? "Unlimited checks" : `${Math.max(0, maxChecks - usedChecks)} remaining`}
-              </p>
-              {userInfo?.plan !== "PRO" && (
-                <Link href="/dashboard/billing" className="text-xs text-cyan-400 hover:text-cyan-300 font-medium transition-colors bg-cyan-500/10 px-3 py-1.5 rounded-full">
-                  Upgrade
-                </Link>
-              )}
-            </div>
-          </motion.div>
+              <div className="flex items-center justify-between border-t border-white/5 pt-4">
+                <p className="text-xs text-slate-400">
+                  {loadingInfo ? "Loading..." : userInfo?.daily_limit === null ? "Unlimited checks" : `${Math.max(0, maxChecks - usedChecks)} remaining`}
+                </p>
+                {userInfo?.plan !== "PRO" && (
+                  <Link href="/dashboard/billing" className="text-xs text-cyan-400 hover:text-cyan-300 font-medium transition-colors bg-cyan-500/10 px-3 py-1.5 rounded-full">
+                    Upgrade
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Small Stats Card under Daily Usage */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-4 sm:p-6 shadow-md">
+              <h3 className="text-sm font-medium text-white mb-3">Quick Stats</h3>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 bg-[#0E0E10] rounded-lg text-center">
+                  <div className="text-xs text-slate-400">Total Volume</div>
+                  <div className="text-sm font-medium text-white mt-1">${totalVolume.toLocaleString()}</div>
+                </div>
+                <div className="p-3 bg-[#0E0E10] rounded-lg text-center">
+                  <div className="text-xs text-slate-400">Blocked</div>
+                  <div className="text-sm font-medium text-white mt-1">{blockedPercent}%</div>
+                </div>
+                <div className="p-3 bg-[#0E0E10] rounded-lg text-center">
+                  <div className="text-xs text-slate-400">Avg Amount</div>
+                  <div className="text-sm font-medium text-white mt-1">${avgAmount.toFixed(2)}</div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
 
           {/* Activity / Trend Chart */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-2 bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col relative overflow-hidden shadow-2xl">
             <div className="flex justify-between items-center mb-6 relative z-10">
               <div>
                 <h2 className="text-base sm:text-lg font-medium text-white mb-1">Transaction Volume</h2>
-                <p className="text-xs text-slate-500 uppercase tracking-widest">7-Day Trend</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest">Monthly Performance</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-light text-white">{loadingInfo ? "–" : recentTxns.length}</p>
@@ -109,20 +174,69 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Beautiful SVG Area Chart */}
-            <div className="flex-1 w-full h-32 sm:h-40 mt-auto relative z-10 flex items-end">
-              <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                {/* Gradient Definition */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="rounded-xl border border-white/5 bg-[#121214] p-3">
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Total Sales</p>
+                <p className="text-xl font-medium text-white mt-1">$21,356</p>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-[#121214] p-3">
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Average</p>
+                <p className="text-xl font-medium text-white mt-1">$1,935</p>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-[#121214] p-3">
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Growth</p>
+                <p className="text-xl font-medium text-cyan-400 mt-1">+18.2%</p>
+              </div>
+            </div>
+
+            <div className="relative z-10 h-64 w-full rounded-2xl border border-white/5 bg-[#0c0c0e] px-4 pt-6 pb-4">
+              <div className="pointer-events-none absolute inset-0 grid grid-rows-4">
+                {[0, 1, 2, 3].map((line) => (
+                  <div key={line} className="border-t border-white/5" />
+                ))}
+              </div>
+
+              <svg className="absolute inset-0 h-full w-full px-4 pt-6 pb-10" preserveAspectRatio="none" viewBox="0 0 100 100">
                 <defs>
-                  <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+                  <linearGradient id="dashLineGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#a5b4fc" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#a5b4fc" stopOpacity="0.2" />
                   </linearGradient>
                 </defs>
-                {/* Mock Data Path - Smooth curve */}
-                <path d="M0,100 L0,70 C10,60 20,80 30,50 C40,20 50,60 60,40 C70,20 80,30 90,10 L100,20 L100,100 Z" fill="url(#areaGradient)" />
-                <path d="M0,70 C10,60 20,80 30,50 C40,20 50,60 60,40 C70,20 80,30 90,10 L100,20" fill="none" stroke="#22d3ee" strokeWidth="2" className="drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+
+                {monthlyBars.map((value, index) => {
+                  const barWidth = 100 / monthlyBars.length - 2.6;
+                  const x = index * (100 / monthlyBars.length) + 1.3;
+                  const height = (value / lineMax) * 100;
+                  return (
+                    <rect
+                      key={`bar-${monthLabels[index]}`}
+                      x={x}
+                      y={100 - height}
+                      width={barWidth}
+                      height={height}
+                      rx="0.9"
+                      fill="#6366f1"
+                      fillOpacity="0.82"
+                    />
+                  );
+                })}
+
+                <polyline
+                  points={linePoints}
+                  fill="none"
+                  stroke="url(#dashLineGradient)"
+                  strokeWidth="1.4"
+                />
               </svg>
+
+              <div className="absolute bottom-2 left-4 right-4 grid grid-cols-12 text-[10px] text-slate-500">
+                {monthLabels.map((month) => (
+                  <span key={`label-${month}`} className="text-center">
+                    {month}
+                  </span>
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -164,16 +278,34 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Segmented Bar Chart */}
-            <div className="flex-1 flex items-end gap-1.5 sm:gap-3 w-full h-32 sm:h-40 pt-4">
-              {[30, 50, 40, 85, 60, 20, 95, 65, 45, 75].map((h, i) => (
-                <div key={i} className="flex-1 bg-white/5 rounded-t-sm relative group h-full flex items-end">
-                  <div 
-                    className={`w-full rounded-t-sm transition-all duration-700 ${i === 3 || i === 6 ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.2)] group-hover:bg-cyan-400'}`} 
-                    style={{ height: `${h}%` }}
-                  />
+            {/* Risk Mix + Distribution */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
+              <div className="md:col-span-2 flex justify-center">
+                <div className="relative w-44 h-44 rounded-full bg-[conic-gradient(#06b6d4_0deg,#06b6d4_255deg,#ef4444_255deg,#ef4444_325deg,#334155_325deg,#334155_360deg)] p-4 shadow-[0_0_50px_rgba(6,182,212,0.18)]">
+                  <div className="w-full h-full rounded-full bg-[#0A0A0A] border border-white/5 flex flex-col items-center justify-center text-center">
+                    <p className="text-2xl font-semibold text-white">78%</p>
+                    <p className="text-[11px] text-slate-400 uppercase tracking-wide">Low Risk</p>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="md:col-span-3 space-y-4">
+                {[
+                  { label: "Safe", value: 78, color: "bg-cyan-500" },
+                  { label: "Review", value: 12, color: "bg-amber-500" },
+                  { label: "Blocked", value: 10, color: "bg-red-500" },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-1.5 flex items-center justify-between text-xs">
+                      <span className="text-slate-400">{item.label}</span>
+                      <span className="text-white">{item.value}%</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+                      <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.value}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             
             <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">

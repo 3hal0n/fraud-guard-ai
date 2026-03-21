@@ -1,8 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 
 export default function Footer() {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/dashboard")) return null;
   const currentYear = new Date().getFullYear();
 
   const productLinks = ["Features", "Pricing", "API Docs", "Dashboard"];
