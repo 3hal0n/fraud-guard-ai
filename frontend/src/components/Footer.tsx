@@ -10,9 +10,9 @@ export default function Footer() {
   const legalLinks = ["Privacy Policy", "Terms of Service", "Security", "Status"];
 
   return (
-    <footer className="relative mt-16 sm:mt-24 md:mt-32 w-full bg-[#020617] border-t border-white/5 overflow-hidden">
+    <footer className="relative mt-16 sm:mt-24 md:mt-32 w-full bg-black border-t border-cyan-500/10 overflow-hidden">
       {/* Background Texture (Subtle Grid) */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#22d3ee1f_1px,transparent_1px),linear-gradient(to_bottom,#22d3ee1f_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 md:pt-20 pb-8 sm:pb-12">
         {/* Main Top Section: CTA + Links */}

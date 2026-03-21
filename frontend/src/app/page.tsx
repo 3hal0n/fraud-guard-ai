@@ -215,7 +215,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="w-full py-12 sm:py-16 md:py-24 bg-[#020617]">
+      <section className="w-full py-12 sm:py-16 md:py-24 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {valueCards.map((card, i) => (
@@ -264,7 +264,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6 bg-black">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-foreground mb-4">Simple, Transparent Pricing</h2>
@@ -273,93 +273,100 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Free Starter Plan */}
-            <div className="glass rounded-2xl p-8 ring-1 ring-slate-700/60">
-              <div className="mb-6">
-                <h3 className="text-2xl font-semibold text-foreground mb-2">Free Starter</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-foreground">$0</span>
-                  <span className="text-slate-500">/ month</span>
+            <div className="group relative h-full">
+              <div className="relative h-full p-6 sm:p-8 rounded-2xl sm:rounded-[2rem] bg-[#0B0D10] border border-white/5 overflow-hidden transition-all duration-500 hover:border-white/10 hover:shadow-2xl hover:shadow-cyan-900/10 active:scale-[0.98] flex flex-col">
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-gradient-to-br from-cyan-500/15 to-teal-500/15 blur-3xl" />
+
+                <div className="relative z-10 mb-6">
+                  <h3 className="text-2xl font-semibold text-foreground mb-2">Free Starter</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-bold text-foreground">$0</span>
+                    <span className="text-slate-500">/ month</span>
+                  </div>
                 </div>
+
+                <ul className="relative z-10 space-y-3 mb-8">
+                  <li className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-teal-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-slate-400">5 Daily Checks</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-teal-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-slate-400">Basic Support</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-teal-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-slate-400">Email Support</span>
+                  </li>
+                </ul>
+
+                <Link
+                  href="/signup"
+                  className="relative z-10 block w-full px-6 py-3 bg-[#1a2235] hover:bg-[#243047] text-foreground rounded-lg font-semibold text-center transition-all mt-auto"
+                >
+                  Sign Up Free
+                </Link>
               </div>
-
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-slate-400">5 Daily Checks</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-slate-400">Basic Support</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-slate-400">Email Support</span>
-                </li>
-              </ul>
-
-              <Link
-                href="/signup"
-                className="block w-full px-6 py-3 bg-navy-800 hover:bg-navy-700 text-foreground rounded-lg font-semibold text-center transition-all"
-              >
-                Sign Up Free
-              </Link>
             </div>
 
             {/* Pro Scale Plan */}
-            <div className="glass rounded-2xl p-8 ring-2 ring-teal-500/50 relative">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+            <div className="group relative h-full">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
                 <span className="px-4 py-1 bg-teal-500 text-navy-950 rounded-full text-sm font-semibold">
                   Most Popular
                 </span>
               </div>
+              <div className="relative h-full p-6 sm:p-8 rounded-2xl sm:rounded-[2rem] bg-[#0B0D10] border border-teal-500/30 overflow-hidden transition-all duration-500 hover:border-teal-400/50 hover:shadow-2xl hover:shadow-cyan-900/20 active:scale-[0.98] ring-1 ring-teal-500/40 flex flex-col">
+                <div className="absolute inset-0 opacity-30 bg-gradient-to-br from-cyan-500/15 to-teal-500/20 blur-3xl" />
 
-              <div className="mb-6">
-                <h3 className="text-2xl font-semibold text-foreground mb-2">Pro Scale</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-teal-400">$29</span>
-                  <span className="text-slate-500">/ month</span>
+                <div className="relative z-10 mb-6">
+                  <h3 className="text-2xl font-semibold text-foreground mb-2">Pro Scale</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-bold text-teal-400">$29</span>
+                    <span className="text-slate-500">/ month</span>
+                  </div>
                 </div>
+
+                <ul className="relative z-10 space-y-3 mb-8">
+                  <li className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-teal-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-foreground font-medium">Unlimited Checks</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-teal-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-foreground font-medium">Advanced Analytics Dashboard</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-teal-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-foreground font-medium">Priority Support</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-teal-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-foreground font-medium">Custom Alerts</span>
+                  </li>
+                </ul>
+
+                <Link
+                  href="/signup?plan=pro"
+                  className="relative z-10 block w-full px-6 py-3 bg-teal-500 hover:bg-teal-600 text-navy-950 rounded-lg font-semibold text-center transition-all shadow-lg shadow-teal-500/30 mt-auto"
+                >
+                  Upgrade Now
+                </Link>
               </div>
-
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-foreground font-medium">Unlimited Checks</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-foreground font-medium">Advanced Analytics Dashboard</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-foreground font-medium">Priority Support</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-foreground font-medium">Custom Alerts</span>
-                </li>
-              </ul>
-
-              <Link
-                href="/signup?plan=pro"
-                className="block w-full px-6 py-3 bg-teal-500 hover:bg-teal-600 text-navy-950 rounded-lg font-semibold text-center transition-all shadow-lg shadow-teal-500/30"
-              >
-                Upgrade Now
-              </Link>
             </div>
           </div>
         </div>
