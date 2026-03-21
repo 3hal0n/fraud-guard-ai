@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import SocialProof from "@/components/SocialProof";
+import HowItWorks from "@/components/HowItWorks";
 
 type CardData = {
   title: string;
@@ -238,6 +239,8 @@ export default function LandingPage() {
       </section>
 
       <SocialProof />
+
+      <HowItWorks />
 
       {/* --- FEATURES SECTION (Reduced top padding) --- */}
       <section className="w-full pt-20 pb-10 bg-black relative z-10">
