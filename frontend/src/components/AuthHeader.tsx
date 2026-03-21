@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/rules-of-hooks */
 
 import React from "react";
 import {
@@ -12,8 +13,21 @@ import {
 } from "@clerk/nextjs";
 
 export default function AuthHeader() {
-  const { isSignedIn } = useAuth();
-  const { user } = useUser();
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
+  // When Clerk is disabled (e.g. CI or forks without secrets), avoid calling Clerk hooks.
+  // `process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is replaced at build time so this branch is stable.
+  let isSignedIn = false;
+  type ClerkLikeUser = {
+    primaryEmailAddress?: { emailAddress?: string | null } | null;
+  };
+  let user: ClerkLikeUser | null = null;
+  if (clerkEnabled) {
+    const auth = useAuth();
+    const u = useUser();
+    isSignedIn = Boolean(auth?.isSignedIn);
+    user = (u?.user as ClerkLikeUser | null) ?? null;
+  }
 
   return (
     <header className="w-full border-b bg-white/5">
@@ -29,18 +43,27 @@ export default function AuthHeader() {
             )}
           </div>
 
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
-
-          <SignedOut>
-            <SignInButton>
-              <button className="px-3 py-1 rounded bg-sky-600 text-white">Sign in</button>
-            </SignInButton>
-            <SignUpButton>
-              <button className="px-3 py-1 rounded bg-transparent border ml-2">Sign up</button>
-            </SignUpButton>
-          </SignedOut>
+          {clerkEnabled ? (
+            <>
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton>
+                  <button className="px-3 py-1 rounded bg-sky-600 text-white">Sign in</button>
+                </SignInButton>
+                <SignUpButton>
+                  <button className="px-3 py-1 rounded bg-transparent border ml-2">Sign up</button>
+                </SignUpButton>
+              </SignedOut>
+            </>
+          ) : (
+            // Clerk disabled: show simple links
+            <>
+              <a href="/login" className="px-3 py-1 rounded bg-sky-600 text-white">Sign in</a>
+              <a href="/signup" className="px-3 py-1 rounded bg-transparent border ml-2">Sign up</a>
+            </>
+          )}
         </div>
       </nav>
     </header>
