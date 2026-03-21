@@ -11,7 +11,6 @@ export default function ClerkClientProvider({ children }: { children: React.Reac
     // Don't initialize Clerk during builds or CI when the publishable key isn't provided.
     // Returning children without `ClerkProvider` prevents @clerk/nextjs from throwing
     // a missing-publishableKey error during prerendering.
-    // eslint-disable-next-line no-console
     console.warn("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY not set — skipping Clerk initialization.");
     return <>{children}</>;
   }

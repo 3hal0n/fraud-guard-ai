@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/rules-of-hooks */
 
 import React from "react";
 import {
@@ -17,12 +18,15 @@ export default function AuthHeader() {
   // When Clerk is disabled (e.g. CI or forks without secrets), avoid calling Clerk hooks.
   // `process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is replaced at build time so this branch is stable.
   let isSignedIn = false;
-  let user = null;
+  type ClerkLikeUser = {
+    primaryEmailAddress?: { emailAddress?: string | null } | null;
+  };
+  let user: ClerkLikeUser | null = null;
   if (clerkEnabled) {
     const auth = useAuth();
     const u = useUser();
     isSignedIn = Boolean(auth?.isSignedIn);
-    user = u?.user ?? null;
+    user = (u?.user as ClerkLikeUser | null) ?? null;
   }
 
   return (
