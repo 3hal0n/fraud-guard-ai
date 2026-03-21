@@ -7,7 +7,12 @@ import { getTransactions, TransactionRecord } from "@/lib/api";
 import { motion } from "framer-motion";
 
 export default function HistoryPage() {
-  const { user } = useUser();
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  let user = null as any;
+  if (clerkEnabled) {
+    const u = useUser();
+    user = u?.user ?? null;
+  }
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

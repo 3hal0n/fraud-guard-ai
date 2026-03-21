@@ -8,7 +8,12 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const { user } = useUser();
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  let user = null as any;
+  if (clerkEnabled) {
+    const u = useUser();
+    user = u?.user ?? null;
+  }
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [recentTxns, setRecentTxns] = useState<TransactionRecord[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(true);

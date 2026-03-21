@@ -53,7 +53,14 @@ const navItems = [
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const isDashboard = pathname?.startsWith("/dashboard");
-  const { user } = useUser();
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
+  // Avoid calling Clerk hooks when Clerk isn't configured (CI/fork runs).
+  let user = null as any;
+  if (clerkEnabled) {
+    const _u = useUser();
+    user = _u?.user ?? null;
+  }
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -76,7 +83,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <span className="font-medium text-white tracking-tight">FraudGuard</span>
         </Link>
         <div className="flex items-center gap-4">
-          <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 border border-white/10" } }} />
+          {clerkEnabled ? (
+            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 border border-white/10" } }} />
+          ) : (
+            <Link href="/login" className="px-3 py-1 rounded bg-sky-600 text-white text-sm">Login</Link>
+          )}
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-white hover:bg-white/5 rounded-lg transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
@@ -137,15 +148,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <div className="p-4 border-t border-white/5">
           <div className="flex items-center justify-between p-3 rounded-xl bg-[#0A0A0A] border border-white/5 hover:border-white/10 transition-colors">
             <div className="flex items-center gap-3 overflow-hidden">
-              <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "Loading..."}
-                </p>
-                <p className="text-xs text-cyan-500 truncate">
-                  {userInfo ? `${userInfo.plan === "PRO" ? "Pro" : "Developer"} Plan` : "Developer Plan"}
-                </p>
-              </div>
+              {clerkEnabled ? (
+                <>
+                  <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "Loading..."}
+                    </p>
+                    <p className="text-xs text-cyan-500 truncate">
+                      {userInfo ? `${userInfo.plan === "PRO" ? "Pro" : "Developer"} Plan` : "Developer Plan"}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1">
+                  <Link href="/login" className="px-3 py-1 rounded bg-sky-600 text-white text-sm">Login</Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -39,7 +39,12 @@ function generateFraudIndicators(data: AnalyzeFormData, riskScore: number): stri
 }
 
 export default function AnalyzePage() {
-  const { user } = useUser();
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  let user = null as any;
+  if (clerkEnabled) {
+    const u = useUser();
+    user = u?.user ?? null;
+  }
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ riskScore: number; status: "safe" | "risk"; elapsed?: number } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
