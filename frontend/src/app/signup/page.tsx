@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { SignUp } from "@clerk/nextjs";
 
-export default function SignUpPage() {
+function SignUpContent() {
   const searchParams = useSearchParams();
   const planParam = searchParams.get("plan");
 
@@ -28,5 +29,13 @@ export default function SignUpPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-navy-950" />}>
+      <SignUpContent />
+    </Suspense>
   );
 }
