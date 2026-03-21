@@ -62,11 +62,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     getUserInfo(user.id).then(setUserInfo).catch(() => null);
   }, [user?.id]);
 
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
   return (
     <div className="min-h-screen bg-[#050505] flex flex-col lg:flex-row font-sans text-white selection:bg-cyan-500/30">
       

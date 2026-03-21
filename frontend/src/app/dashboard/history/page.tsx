@@ -14,7 +14,6 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (!user?.id) return;
-    setLoading(true);
     getTransactions(user.id, 50)
       .then(setTransactions)
       .catch(() => setError("Failed to load transaction history."))
@@ -108,7 +107,7 @@ export default function HistoryPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-slate-400 text-xs">{new Date(txn.timestamp).toLocaleString()}</span>
+                          <span className="text-slate-400 text-xs">{txn.timestamp ? new Date(txn.timestamp).toLocaleString() : "—"}</span>
                         </td>
                       </tr>
                     );

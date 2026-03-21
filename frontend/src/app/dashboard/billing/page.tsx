@@ -3,7 +3,6 @@
 import AppLayout from "@/components/AppLayout";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
 
 export default function BillingPage() {
   const [currentPlan] = useState<"free" | "pro">("free");
@@ -52,7 +51,7 @@ export default function BillingPage() {
             {currentPlan === "free" && (
               <div className="bg-[#121214] p-5 rounded-2xl border border-white/5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs text-slate-400 uppercase tracking-wider">Today's API Usage</span>
+                  <span className="text-xs text-slate-400 uppercase tracking-wider">Today&apos;s API Usage</span>
                   <span className="text-sm font-medium text-white">{usedChecks} / {maxChecks}</span>
                 </div>
                 <div className="relative w-full h-1.5 bg-black rounded-full overflow-hidden">

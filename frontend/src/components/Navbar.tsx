@@ -28,11 +28,11 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="flex-1 flex justify-center gap-6 text-sm text-slate-300 hidden md:flex">
-          <a href="/#features" className="hover:text-white transition-colors">Features</a>
-          <a href="/#pricing" className="hover:text-white transition-colors">Pricing</a>
-          <a href="/#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-          <a href="/#faq" className="hover:text-white transition-colors">FAQ</a>
+        <nav className="flex-1 hidden md:flex justify-center gap-6 text-sm text-slate-300">
+          <Link href="/#features" className="hover:text-white transition-colors">Features</Link>
+          <Link href="/#pricing" className="hover:text-white transition-colors">Pricing</Link>
+          <Link href="/#how-it-works" className="hover:text-white transition-colors">How It Works</Link>
+          <Link href="/#faq" className="hover:text-white transition-colors">FAQ</Link>
         </nav>
 
         {/* Auth Actions */}
@@ -106,34 +106,34 @@ export default function Navbar() {
       {open && (
         <div className="pointer-events-auto absolute top-[64px] left-1/2 transform -translate-x-1/2 w-[92%] max-w-md bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-3 z-40 md:hidden">
           <nav className="flex flex-col gap-2 text-sm text-slate-200">
-            <a
+            <Link
               onClick={() => setOpen(false)}
               href="/#features"
               className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer"
             >
               Features
-            </a>
-            <a
+            </Link>
+            <Link
               onClick={() => setOpen(false)}
               href="/#pricing"
               className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer"
             >
               Pricing
-            </a>
-            <a
+            </Link>
+            <Link
               onClick={() => setOpen(false)}
               href="/#how-it-works"
               className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer"
             >
               How It Works
-            </a>
-            <a
+            </Link>
+            <Link
               onClick={() => setOpen(false)}
               href="/#faq"
               className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer"
             >
               FAQ
-            </a>
+            </Link>
             <hr className="my-2 border-white/10" />
             <SignedOut>
               <Link

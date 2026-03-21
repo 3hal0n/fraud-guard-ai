@@ -17,6 +17,7 @@ const analyzeSchema = z.object({
   time: z.string().min(1, "Please select a transaction time"),
 });
 type AnalyzeFormData = z.infer<typeof analyzeSchema>;
+type AnalyzeFormInput = z.input<typeof analyzeSchema>;
 
 function generateFraudIndicators(data: AnalyzeFormData, riskScore: number): string[] {
   const indicators: string[] = [];
@@ -44,7 +45,9 @@ export default function AnalyzePage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [submittedFormData, setSubmittedFormData] = useState<AnalyzeFormData | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AnalyzeFormData>({ resolver: zodResolver(analyzeSchema) });
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<AnalyzeFormInput, unknown, AnalyzeFormData>({
+    resolver: zodResolver(analyzeSchema),
+  });
 
   const onSubmit = async (data: AnalyzeFormData) => {
     setIsScanning(true); setScanResult(null); setApiError(null); setSubmittedFormData(data);

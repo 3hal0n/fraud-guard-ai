@@ -8,18 +8,23 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const [greeting, setGreeting] = useState("");
   const { user } = useUser();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [recentTxns, setRecentTxns] = useState<TransactionRecord[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  }, []);
 
   const usedChecks = userInfo?.daily_usage ?? 0;
   const maxChecks = userInfo?.daily_limit ?? 5;
   const usagePercentage = maxChecks > 0 ? Math.min((usedChecks / maxChecks) * 100, 100) : 0;
   const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  const { monthlyBars, monthlyLine, lineMax, linePoints, totalVolume, blockedPercent, avgAmount } = useMemo(() => {
+  const { monthlyBars, lineMax, linePoints, totalVolume, blockedPercent, avgAmount } = useMemo(() => {
     const bars = new Array(12).fill(0);
     const sums = new Array(12).fill(0);
     const counts = new Array(12).fill(0);
@@ -53,7 +58,6 @@ export default function DashboardPage() {
 
     return {
       monthlyBars: bars,
-      monthlyLine: avgPerMonth,
       lineMax: maxVal,
       linePoints: points,
       totalVolume: total,
@@ -63,15 +67,7 @@ export default function DashboardPage() {
   }, [recentTxns]);
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
-  }, []);
-
-  useEffect(() => {
     if (!user?.id) return;
-    setLoadingInfo(true);
     Promise.all([
       getUserInfo(user.id),
       getTransactions(user.id, 100),
