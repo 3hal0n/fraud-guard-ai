@@ -39,7 +39,11 @@ export default function ApiHubPage() {
       .finally(() => setLoading(false));
   }, [user?.id]);
 
-  const isPro = userInfo?.plan === "PRO";
+  // Allow accessing Pro features during development/testing. Set
+  // NEXT_PUBLIC_ALLOW_PRO_TEST=1 to force enabling in other environments.
+  const allowProForTesting =
+    process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1" || process.env.NODE_ENV !== "production";
+  const isPro = userInfo?.plan === "PRO" || allowProForTesting;
 
   const curlSnippet = useMemo(() => {
     const key = apiKey || "<YOUR_API_KEY>";

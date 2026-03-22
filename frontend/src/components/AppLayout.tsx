@@ -93,7 +93,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const navItems = userInfo?.plan === "PRO" ? [...baseNavItems, ...proNavItems] : baseNavItems;
+  // Allow showing Pro features during local development/testing. In production
+  // this will be false unless the user actually has a PRO plan.
+  const allowProForTesting =
+    process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1" || process.env.NODE_ENV !== "production";
+  const navItems = userInfo?.plan === "PRO" || allowProForTesting ? [...baseNavItems, ...proNavItems] : baseNavItems;
 
   useEffect(() => {
     if (!user?.id) return;

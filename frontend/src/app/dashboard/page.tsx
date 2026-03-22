@@ -110,9 +110,9 @@ export default function DashboardPage() {
           
           {/* Left Column: Usage Tracker + Small Stats */}
           <div className="flex flex-col gap-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col gap-5 shadow-2xl lg:self-start">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col gap-5 shadow-2xl w-full">
             <div>
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-6 ">
                 <div>
                   <h2 className="text-base sm:text-lg font-medium text-white mb-1">Daily Usage</h2>
                   <p className="text-xs text-slate-500 uppercase tracking-widest">API Limits</p>
@@ -152,7 +152,7 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Small Stats Card under Daily Usage */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-4 sm:p-6 shadow-md">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-4 sm:p-6 shadow-md w-full">
               <h3 className="text-sm font-medium text-white mb-3">Quick Stats</h3>
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 bg-[#0E0E10] rounded-lg text-center">
@@ -275,7 +275,7 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            {userInfo?.plan === "PRO" && (
+            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1" || process.env.NODE_ENV !== "production") && (
               <Link href="/dashboard/api-hub" className="group bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 hover:border-white/20 transition-all flex items-center gap-4 shadow-xl">
                 <div className="w-12 h-12 bg-[#121214] border border-white/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                   <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 6h3m-7.5 6h12m-9 6h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" /></svg>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
               </Link>
             )}
 
-            {userInfo?.plan === "PRO" && (
+            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1" || process.env.NODE_ENV !== "production") && (
               <Link href="/dashboard/bulk-audit" className="group bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 hover:border-white/20 transition-all flex items-center gap-4 shadow-xl">
                 <div className="w-12 h-12 bg-[#121214] border border-white/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                   <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7h16M4 12h16M4 17h10m4 0l2-2m0 0l-2-2m2 2H14" /></svg>
