@@ -29,20 +29,69 @@ export interface ApiError {
   detail: string;
 }
 
+function normalizeErrorDetail(detail: unknown, fallback: string): string {
+  if (!detail) return fallback;
+  if (typeof detail === "string") return detail;
+
+  if (Array.isArray(detail)) {
+    const formatted = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (
+          item &&
+          typeof item === "object" &&
+          "msg" in item &&
+          typeof (item as { msg?: unknown }).msg === "string"
+        ) {
+          const loc = (item as { loc?: unknown }).loc;
+          const locText = Array.isArray(loc) ? ` (${loc.join(".")})` : "";
+          return `${(item as { msg: string }).msg}${locText}`;
+        }
+        try {
+          return JSON.stringify(item);
+        } catch {
+          return String(item);
+        }
+      })
+      .filter(Boolean)
+      .join("; ");
+    return formatted || fallback;
+  }
+
+  if (typeof detail === "object") {
+    if ("msg" in detail && typeof (detail as { msg?: unknown }).msg === "string") {
+      return (detail as { msg: string }).msg;
+    }
+    try {
+      return JSON.stringify(detail);
+    } catch {
+      return fallback;
+    }
+  }
+
+  return String(detail);
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const { headers: optionHeaders, ...restOptions } = options;
+  const headers = new Headers(optionHeaders);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...options.headers },
-    ...options,
+    ...restOptions,
+    headers,
   });
 
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
       const body = await res.json();
-      detail = body.detail || detail;
+      detail = normalizeErrorDetail(body.detail, detail);
     } catch {
       /* ignore parse error */
     }
@@ -169,7 +218,7 @@ export async function uploadBulkAuditCsv(userId: string, file: File): Promise<Bu
     let detail = `HTTP ${res.status}`;
     try {
       const body = await res.json();
-      detail = body.detail || detail;
+      detail = normalizeErrorDetail(body.detail, detail);
     } catch {
       /* ignore parse error */
     }
