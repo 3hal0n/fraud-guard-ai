@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import re
-from sqlalchemy import create_engine, Column, Integer, String, Float, Numeric, DateTime, ForeignKey, func
+from sqlalchemy import create_engine, Column, Integer, String, Numeric, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -66,6 +66,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     plan = Column(String, default="FREE")
     daily_usage = Column(Integer, default=0)
+    api_key = Column(String, unique=True, index=True, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -87,6 +88,10 @@ def create_tables():
 
 def get_user(db, user_id: str):
     return db.query(User).filter(User.id == user_id).first()
+
+
+def get_user_by_api_key(db, api_key: str):
+    return db.query(User).filter(User.api_key == api_key).first()
 
 
 def increment_usage(db, user: User, amount: int = 1):
@@ -125,6 +130,28 @@ def create_user_if_not_exists(db, user_id: str, email: str | None = None, plan: 
     db.commit()
     db.refresh(new)
     return new
+
+
+def set_user_api_key(db, user: User, api_key: str):
+    user.api_key = api_key
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def get_user_telemetry_counts(db, user_id: str):
+    total_scans = db.query(func.count(Transaction.id)).filter(Transaction.user_id == user_id).scalar() or 0
+    high_risk_detected = (
+        db.query(func.count(Transaction.id))
+        .filter(Transaction.user_id == user_id, Transaction.risk_score >= 0.5)
+        .scalar()
+        or 0
+    )
+    return {
+        "total_scans": int(total_scans),
+        "high_risk_detected": int(high_risk_detected),
+    }
 
 
 def reset_daily_usage_all(db):

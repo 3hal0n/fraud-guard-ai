@@ -1,11 +1,22 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from predict import predict_fraud, load_models
 import uuid
 import os
-from db import SessionLocal, create_tables, get_user, increment_usage, save_transaction, Transaction as TxModel
+import csv
+from db import (
+    SessionLocal,
+    create_tables,
+    get_user,
+    get_user_by_api_key,
+    get_user_telemetry_counts,
+    increment_usage,
+    save_transaction,
+    set_user_api_key,
+    Transaction as TxModel,
+)
 import logging
 
 logger = logging.getLogger("fraudguard")
@@ -229,19 +240,109 @@ async def get_transactions(user_id: str, limit: int = 20):
             pass
 
 
+@app.get("/api/v1/telemetry/{user_id}")
+async def get_telemetry(user_id: str):
+    """Return telemetry counters sourced from the transactions table."""
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            create_user_if_not_exists(db, user_id)
+        counts = get_user_telemetry_counts(db, user_id)
+        return {
+            "user_id": user_id,
+            "total_scans": counts["total_scans"],
+            "high_risk_detected": counts["high_risk_detected"],
+            "db_available": True,
+        }
+    except Exception as e:
+        logger.warning("get_telemetry DB error for %s: %s", user_id, e)
+        return {
+            "user_id": user_id,
+            "total_scans": 0,
+            "high_risk_detected": 0,
+            "db_available": False,
+        }
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@app.get("/api/v1/user/{user_id}/api-key")
+async def get_user_api_key(user_id: str):
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+        if (user.plan or "FREE").upper() != "PRO":
+            raise HTTPException(status_code=403, detail="API keys are available on the PRO plan")
+        return {
+            "user_id": user.id,
+            "api_key": user.api_key,
+            "has_api_key": bool(user.api_key),
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/v1/user/{user_id}/api-key")
+async def generate_user_api_key(user_id: str):
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+
+        if (user.plan or "FREE").upper() != "PRO":
+            raise HTTPException(status_code=403, detail="API keys are available on the PRO plan")
+
+        api_key = str(uuid.uuid4())
+        user = set_user_api_key(db, user, api_key)
+        return {
+            "user_id": user.id,
+            "api_key": user.api_key,
+            "generated": True,
+        }
+    finally:
+        db.close()
+
+
 @app.post("/api/v1/analyze")
-async def analyze(transaction: TransactionRequest):
+async def analyze(
+    transaction: TransactionRequest,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+):
     # SessionLocal() is lazy — the actual TCP connection happens on first query.
     # We therefore wrap individual DB operations (not SessionLocal) in try/except.
     db = SessionLocal()
     try:
         user_id = transaction.user_id
         db_ok = True
+        user = None
+
+        # Accept direct API usage via X-API-Key for automation clients.
+        if x_api_key:
+            try:
+                user = get_user_by_api_key(db, x_api_key)
+                if not user:
+                    raise HTTPException(status_code=401, detail="Invalid API key")
+                user_id = user.id
+            except HTTPException:
+                raise
+            except Exception as key_exc:
+                logger.warning("API key lookup failed: %s", key_exc)
+                raise HTTPException(status_code=500, detail="Failed to validate API key")
 
         # ── Guardrail (requires DB) ─────────────────────────────────────────
         if user_id:
             try:
-                user = get_user(db, user_id)
+                user = user or get_user(db, user_id)
                 if not user:
                     # Auto-create the user row on first scan (Clerk is the auth
                     # source of truth; we just need a DB record for quota tracking)
@@ -271,7 +372,7 @@ async def analyze(transaction: TransactionRequest):
                 tx_id = str(uuid.uuid4())
                 save_transaction(db, tx_id, user_id, float(transaction.amount), int(score))
                 if user_id:
-                    user = get_user(db, user_id)
+                    user = user or get_user(db, user_id)
                     increment_usage(db, user, 1)
             except Exception as persist_exc:
                 logger.warning("Failed to persist transaction: %s", persist_exc)
@@ -282,6 +383,115 @@ async def analyze(transaction: TransactionRequest):
     except Exception as e:
         logger.exception("Unhandled error in /api/v1/analyze: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@app.post("/api/v1/analyze/bulk-csv")
+async def analyze_bulk_csv(user_id: str = Form(...), file: UploadFile = File(...)):
+    """Process up to 100 transactions from CSV and return only flagged rows."""
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+
+        if (user.plan or "FREE").upper() != "PRO":
+            raise HTTPException(status_code=403, detail="Bulk CSV audit is available on the PRO plan")
+
+        raw = await file.read()
+        try:
+            text = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded")
+
+        reader = csv.DictReader(text.splitlines())
+        if not reader.fieldnames:
+            raise HTTPException(status_code=400, detail="CSV is missing a header row")
+
+        required_columns = {"amount", "merchant"}
+        missing = [col for col in required_columns if col not in set(reader.fieldnames)]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"CSV missing required columns: {', '.join(missing)}")
+
+        rows = list(reader)
+        if len(rows) == 0:
+            return {
+                "processed_rows": 0,
+                "flagged_rows": [],
+            }
+        if len(rows) > 100:
+            raise HTTPException(status_code=400, detail="CSV limit is 100 transactions per upload")
+
+        flagged_rows = []
+        processed = 0
+
+        for idx, row in enumerate(rows, start=1):
+            try:
+                amount = float(row.get("amount", "").strip())
+                merchant = (row.get("merchant") or "").strip()
+                if not merchant:
+                    raise ValueError("merchant is required")
+
+                location = (row.get("location") or "").strip()
+                time_str = (row.get("time") or "").strip()
+
+                score, is_fraud = predict_fraud(
+                    amount=amount,
+                    merchant=merchant,
+                    location=location,
+                    time_str=time_str,
+                )
+                status = "risk" if is_fraud else "safe"
+                processed += 1
+
+                tx_id = str(uuid.uuid4())
+                try:
+                    save_transaction(db, tx_id, user_id, amount, int(score))
+                except Exception as persist_exc:
+                    logger.warning("Bulk persist failed for row %s: %s", idx, persist_exc)
+
+                normalized_score = int(score)
+                if status == "risk":
+                    flagged_rows.append(
+                        {
+                            "row_number": idx,
+                            "amount": amount,
+                            "merchant": merchant,
+                            "location": location,
+                            "time": time_str or None,
+                            "risk_score": normalized_score,
+                            "status": status,
+                        }
+                    )
+            except Exception as row_exc:
+                flagged_rows.append(
+                    {
+                        "row_number": idx,
+                        "status": "invalid",
+                        "error": str(row_exc),
+                    }
+                )
+
+        try:
+            increment_usage(db, user, processed)
+        except Exception as usage_exc:
+            logger.warning("Bulk usage increment failed for %s: %s", user_id, usage_exc)
+
+        return {
+            "processed_rows": processed,
+            "total_rows": len(rows),
+            "flagged_rows": flagged_rows,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Unhandled error in /api/v1/analyze/bulk-csv: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
     finally:
         try:
             db.close()

@@ -12,7 +12,7 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+const baseNavItems = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -51,6 +51,27 @@ const navItems = [
   },
 ];
 
+const proNavItems = [
+  {
+    name: "API Hub",
+    href: "/dashboard/api-hub",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 6h3m-7.5 6h12m-9 6h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Bulk CSV Audit",
+    href: "/dashboard/bulk-audit",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7h16M4 12h16M4 17h10m4 0l2-2m0 0l-2-2m2 2H14" />
+      </svg>
+    ),
+  },
+];
+
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const isDashboard = pathname?.startsWith("/dashboard");
@@ -72,6 +93,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navItems = userInfo?.plan === "PRO" ? [...baseNavItems, ...proNavItems] : baseNavItems;
 
   useEffect(() => {
     if (!user?.id) return;
