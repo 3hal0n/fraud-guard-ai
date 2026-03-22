@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from predict import predict_fraud, load_models
 import uuid
 import os
 import csv
+import importlib
 from db import (
     SessionLocal,
     create_tables,
@@ -15,11 +16,14 @@ from db import (
     increment_usage,
     save_transaction,
     set_user_api_key,
+    set_user_plan,
     Transaction as TxModel,
 )
 import logging
 
 logger = logging.getLogger("fraudguard")
+# Optional module-level Stripe override (used by tests and local stubs).
+stripe = None
 
 
 # NOTE: avoid creating DB tables at import-time to prevent startup failures
@@ -32,6 +36,10 @@ class TransactionRequest(BaseModel):
     location: str | None = None
     time: str | None = None          # e.g. "2026-02-26 13:13"
     user_id: str | None = None
+
+
+class CheckoutSessionRequest(BaseModel):
+    user_id: str
 
 # ---------------------------------------------------------------------------
 # Lifespan: load ML models + start background jobs once at startup
@@ -77,6 +85,21 @@ app.add_middleware(
 )
 
 
+def _get_stripe_client():
+    secret_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not secret_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured")
+
+    stripe_module = stripe
+    if stripe_module is None:
+        try:
+            stripe_module = importlib.import_module("stripe")
+        except ModuleNotFoundError:
+            raise HTTPException(status_code=500, detail="Stripe SDK is not installed on backend")
+
+    stripe_module.api_key = secret_key
+    return stripe_module
+
 
 @app.post("/api/v1/webhook/clerk")
 async def clerk_webhook(request: dict):
@@ -109,6 +132,107 @@ async def clerk_webhook(request: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/create-checkout-session")
+async def create_checkout_session(payload: CheckoutSessionRequest):
+    """Create a Stripe Checkout Session for subscription upgrade."""
+    user_id = (payload.user_id or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+
+        if (user.plan or "FREE").upper() == "PRO":
+            raise HTTPException(status_code=409, detail="User is already on the PRO plan")
+
+        stripe_client = _get_stripe_client()
+        price_id = os.environ.get("STRIPE_PRICE_ID")
+        success_url = os.environ.get(
+            "STRIPE_SUCCESS_URL",
+            "http://localhost:3000/dashboard/billing?upgrade=success",
+        )
+        cancel_url = os.environ.get(
+            "STRIPE_CANCEL_URL",
+            "http://localhost:3000/dashboard/billing?upgrade=cancel",
+        )
+
+        if not price_id:
+            raise HTTPException(status_code=500, detail="STRIPE_PRICE_ID is not configured")
+
+        session = stripe_client.checkout.Session.create(
+            mode="subscription",
+            line_items=[{"price": price_id, "quantity": 1}],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            client_reference_id=user_id,
+            metadata={"user_id": user_id},
+            allow_promotion_codes=True,
+        )
+
+        checkout_url = session.get("url")
+        if not checkout_url:
+            raise HTTPException(status_code=502, detail="Stripe did not return a checkout URL")
+
+        return {"checkout_url": checkout_url}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Stripe exceptions vary across SDK versions; treat all provider errors as bad gateway.
+        logger.exception("Checkout session creation failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Failed to create Stripe checkout session")
+    finally:
+        db.close()
+
+@app.post("/api/v1/webhook/stripe")
+async def stripe_webhook(request: Request, stripe_signature: str | None = Header(default=None, alias="Stripe-Signature")):
+    """Handle Stripe events and upgrade users after successful checkout."""
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+    if not webhook_secret:
+        raise HTTPException(status_code=500, detail="Stripe webhook is not configured")
+    if not stripe_signature:
+        raise HTTPException(status_code=400, detail="Missing Stripe-Signature header")
+
+    payload = await request.body()
+    stripe_client = _get_stripe_client()
+
+    try:
+        event = stripe_client.Webhook.construct_event(payload, stripe_signature, webhook_secret)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid webhook payload")
+    except Exception as exc:
+        # Handle signature verification differences across Stripe SDK versions.
+        if exc.__class__.__name__ == "SignatureVerificationError":
+            raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+        raise
+    event_type = event.get("type")
+    if event_type == "checkout.session.completed":
+        session_obj = event.get("data", {}).get("object", {})
+        user_id = (
+            (session_obj.get("metadata") or {}).get("user_id")
+            or session_obj.get("client_reference_id")
+        )
+
+        if not user_id:
+            logger.warning("checkout.session.completed without user_id metadata")
+            return {"received": True, "ignored": True}
+
+        db = SessionLocal()
+        try:
+            user = get_user(db, user_id)
+            if not user:
+                from db import create_user_if_not_exists
+                user = create_user_if_not_exists(db, user_id)
+            set_user_plan(db, user, "PRO")
+        finally:
+            db.close()
+
+    return {"received": True}
 
 
 def _seconds_until_next_utc_midnight():

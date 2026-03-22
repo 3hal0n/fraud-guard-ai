@@ -203,6 +203,10 @@ export interface BulkAuditResponse {
   flagged_rows: BulkAuditFlaggedRow[];
 }
 
+export interface CheckoutSessionResponse {
+  checkout_url: string;
+}
+
 /** POST /api/v1/analyze/bulk-csv */
 export async function uploadBulkAuditCsv(userId: string, file: File): Promise<BulkAuditResponse> {
   const formData = new FormData();
@@ -227,4 +231,12 @@ export async function uploadBulkAuditCsv(userId: string, file: File): Promise<Bu
   }
 
   return res.json() as Promise<BulkAuditResponse>;
+}
+
+/** POST /api/v1/create-checkout-session */
+export async function createCheckoutSession(userId: string): Promise<CheckoutSessionResponse> {
+  return request<CheckoutSessionResponse>("/api/v1/create-checkout-session", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
+  });
 }

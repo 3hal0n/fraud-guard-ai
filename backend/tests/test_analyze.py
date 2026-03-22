@@ -181,3 +181,85 @@ def test_bulk_csv_requires_pro_and_returns_rows():
     body = pro_resp.json()
     assert body["processed_rows"] == 2
     assert any(row["status"] == "risk" for row in body["flagged_rows"])
+
+
+def test_create_checkout_session_returns_url(monkeypatch):
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+    monkeypatch.setenv("STRIPE_PRICE_ID", "price_test_dummy")
+    monkeypatch.setenv("STRIPE_SUCCESS_URL", "http://localhost:3000/dashboard/billing?upgrade=success")
+    monkeypatch.setenv("STRIPE_CANCEL_URL", "http://localhost:3000/dashboard/billing?upgrade=cancel")
+
+    class _CheckoutSession:
+        @staticmethod
+        def create(**kwargs):
+            assert kwargs["metadata"]["user_id"] == "clerk-stripe-user"
+            return {"url": "https://checkout.stripe.test/session_123"}
+
+    class _Checkout:
+        Session = _CheckoutSession
+
+    class _StripeStub:
+        api_key = None
+        checkout = _Checkout
+
+    import main as _main
+    monkeypatch.setattr(_main, "stripe", _StripeStub)
+
+    client.post("/api/v1/webhook/clerk", json={
+        "type": "user.created",
+        "data": {"id": "clerk-stripe-user", "email": "stripe@example.com"},
+    })
+
+    resp = client.post("/api/v1/create-checkout-session", json={"user_id": "clerk-stripe-user"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["checkout_url"].startswith("https://")
+
+
+def test_stripe_webhook_checkout_completed_upgrades_user(monkeypatch):
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test_dummy")
+
+    class _Webhook:
+        @staticmethod
+        def construct_event(payload, sig, secret):
+            assert sig == "t=1,v1=abc"
+            assert secret == "whsec_test_dummy"
+            return {
+                "type": "checkout.session.completed",
+                "data": {
+                    "object": {
+                        "metadata": {"user_id": "clerk-webhook-user"},
+                    }
+                },
+            }
+
+    class _StripeStub:
+        api_key = None
+        Webhook = _Webhook
+
+        class error:
+            class SignatureVerificationError(Exception):
+                pass
+
+    import main as _main
+    monkeypatch.setattr(_main, "stripe", _StripeStub)
+
+    client.post("/api/v1/webhook/clerk", json={
+        "type": "user.created",
+        "data": {"id": "clerk-webhook-user", "email": "webhook@example.com"},
+    })
+
+    resp = client.post(
+        "/api/v1/webhook/stripe",
+        headers={"Stripe-Signature": "t=1,v1=abc", "Content-Type": "application/json"},
+        data="{}",
+    )
+    assert resp.status_code == 200, resp.text
+
+    from db import SessionLocal, get_user
+    db = SessionLocal()
+    try:
+        u = get_user(db, "clerk-webhook-user")
+        assert (u.plan or "").upper() == "PRO"
+    finally:
+        db.close()

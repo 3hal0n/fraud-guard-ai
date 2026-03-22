@@ -140,6 +140,14 @@ def set_user_api_key(db, user: User, api_key: str):
     return user
 
 
+def set_user_plan(db, user: User, plan: str):
+    user.plan = (plan or "FREE").upper()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def get_user_telemetry_counts(db, user_id: str):
     total_scans = db.query(func.count(Transaction.id)).filter(Transaction.user_id == user_id).scalar() or 0
     high_risk_detected = (

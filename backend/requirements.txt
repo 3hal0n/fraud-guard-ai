@@ -11,3 +11,4 @@ pytest
 alembic
 httpx
 python-multipart
+stripe

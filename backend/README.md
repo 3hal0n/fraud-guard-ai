@@ -90,6 +90,11 @@ pytest
 
 - `DATABASE_URL` / `SUPABASE_DB_URL` — SQLAlchemy DB URL (Postgres expected in production).
 - `ALLOWED_ORIGINS` — comma-separated origins for CORS (default: `http://localhost:3000`).
+- `STRIPE_SECRET_KEY` — Stripe secret API key (e.g. `sk_test_...`).
+- `STRIPE_WEBHOOK_SECRET` — webhook signing secret for `/api/v1/webhook/stripe` (e.g. `whsec_...`).
+- `STRIPE_PRICE_ID` — recurring price ID used for checkout (e.g. `price_...`).
+- `STRIPE_SUCCESS_URL` — URL to redirect after successful checkout.
+- `STRIPE_CANCEL_URL` — URL to redirect when checkout is canceled.
 
 ## Notes
 - The FastAPI `lifespan` hook loads ML models at startup. If models are absent the server will still start but inference endpoints may fail.

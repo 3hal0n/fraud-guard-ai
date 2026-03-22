@@ -1,14 +1,66 @@
 "use client";
+/* eslint-disable react-hooks/rules-of-hooks */
 
 import AppLayout from "@/components/AppLayout";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
+import { ApiError, createCheckoutSession, getUserInfo, UserInfo } from "@/lib/api";
 
 export default function BillingPage() {
-  const [currentPlan] = useState<"free" | "pro">("free");
-  const usedChecks = 3;
-  const maxChecks = 5;
-  const usagePercentage = (usedChecks / maxChecks) * 100;
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  let user: { id?: string } | null = null;
+  if (clerkEnabled) {
+    const u = useUser();
+    user = u?.user ?? null;
+  }
+
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setLoadingInfo(false);
+      return;
+    }
+
+    getUserInfo(user.id)
+      .then((info) => setUserInfo(info))
+      .catch(() => setApiError("Failed to load billing profile."))
+      .finally(() => setLoadingInfo(false));
+  }, [user?.id]);
+
+  const currentPlan = useMemo<"free" | "pro">(() => {
+    if ((userInfo?.plan || "FREE").toUpperCase() === "PRO") return "pro";
+    return "free";
+  }, [userInfo?.plan]);
+
+  const usedChecks = userInfo?.daily_usage ?? 0;
+  const maxChecks = userInfo?.daily_limit ?? 5;
+  const usagePercentage = maxChecks > 0 ? (usedChecks / maxChecks) * 100 : 0;
+
+  const handleUpgrade = async () => {
+    if (!user?.id) {
+      setApiError("You must be signed in to upgrade.");
+      return;
+    }
+
+    setApiError(null);
+    setIsRedirecting(true);
+    try {
+      const { checkout_url } = await createCheckoutSession(user.id);
+      if (!checkout_url) {
+        throw new Error("Missing checkout URL from server.");
+      }
+      window.location.href = checkout_url;
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setApiError(apiErr.detail || "Failed to start checkout session.");
+      setIsRedirecting(false);
+    }
+  };
 
   return (
     <AppLayout>
@@ -52,10 +104,10 @@ export default function BillingPage() {
               <div className="bg-[#121214] p-5 rounded-2xl border border-white/5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs text-slate-400 uppercase tracking-wider">Today&apos;s API Usage</span>
-                  <span className="text-sm font-medium text-white">{usedChecks} / {maxChecks}</span>
+                  <span className="text-sm font-medium text-white">{loadingInfo ? "-" : `${usedChecks} / ${maxChecks}`}</span>
                 </div>
                 <div className="relative w-full h-1.5 bg-black rounded-full overflow-hidden">
-                  <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500" style={{ width: `${usagePercentage}%` }} />
+                  <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500" style={{ width: `${Math.min(usagePercentage, 100)}%` }} />
                 </div>
               </div>
             )}
@@ -86,9 +138,14 @@ export default function BillingPage() {
                 ))}
               </ul>
 
-              <button className="relative z-10 w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-medium transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95">
-                Upgrade Now
+              <button
+                onClick={handleUpgrade}
+                disabled={isRedirecting || loadingInfo}
+                className="relative z-10 w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-medium transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isRedirecting ? "Redirecting..." : "Upgrade to Pro"}
               </button>
+              {apiError && <p className="relative z-10 text-red-400 text-xs mt-3">{apiError}</p>}
             </motion.div>
           )}
         </div>
