@@ -207,6 +207,29 @@ export interface CheckoutSessionResponse {
   checkout_url: string;
 }
 
+export interface BillingHistoryItem {
+  id: number;
+  invoice_id: string | null;
+  amount: number;
+  currency: string;
+  status: "paid" | "failed" | string;
+  paid_at: string | null;
+  created_at: string | null;
+}
+
+export interface BillingOverview {
+  user_id: string;
+  plan: "FREE" | "PRO";
+  subscription: {
+    status: string;
+    cancel_at_period_end: boolean;
+    current_period_end: string | null;
+    next_payment_at: string | null;
+    stripe_subscription_id: string | null;
+  };
+  history: BillingHistoryItem[];
+}
+
 /** POST /api/v1/analyze/bulk-csv */
 export async function uploadBulkAuditCsv(userId: string, file: File): Promise<BulkAuditResponse> {
   const formData = new FormData();
@@ -239,4 +262,9 @@ export async function createCheckoutSession(userId: string): Promise<CheckoutSes
     method: "POST",
     body: JSON.stringify({ user_id: userId }),
   });
+}
+
+/** GET /api/v1/billing/:id */
+export async function getBillingOverview(userId: string): Promise<BillingOverview> {
+  return request<BillingOverview>(`/api/v1/billing/${userId}`);
 }

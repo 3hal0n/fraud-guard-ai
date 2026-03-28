@@ -95,8 +95,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Allow showing Pro features during local development/testing. In production
   // this will be false unless the user actually has a PRO plan.
-  const allowProForTesting =
-    process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1" || process.env.NODE_ENV !== "production";
+  const allowProForTesting = process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1";
   const navItems = userInfo?.plan === "PRO" || allowProForTesting ? [...baseNavItems, ...proNavItems] : baseNavItems;
 
   useEffect(() => {
@@ -185,7 +184,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="flex items-center gap-3 overflow-hidden">
               {clerkEnabled ? (
                 <>
-                  <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
+                  <div className="relative">
+                    <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
+                    {userInfo?.plan === "PRO" && (
+                      <span className="absolute -top-1 -right-1 rounded-full bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold leading-none text-black border border-cyan-300">
+                        PRO
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">
                       {user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "Loading..."}

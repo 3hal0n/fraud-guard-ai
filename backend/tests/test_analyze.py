@@ -198,9 +198,15 @@ def test_create_checkout_session_returns_url(monkeypatch):
     class _Checkout:
         Session = _CheckoutSession
 
+    class _Price:
+        @staticmethod
+        def retrieve(_price_id):
+            return {"id": _price_id, "recurring": {"interval": "month"}}
+
     class _StripeStub:
         api_key = None
         checkout = _Checkout
+        Price = _Price
 
     import main as _main
     monkeypatch.setattr(_main, "stripe", _StripeStub)
@@ -213,6 +219,161 @@ def test_create_checkout_session_returns_url(monkeypatch):
     resp = client.post("/api/v1/create-checkout-session", json={"user_id": "clerk-stripe-user"})
     assert resp.status_code == 200, resp.text
     assert resp.json()["checkout_url"].startswith("https://")
+
+
+def test_create_checkout_session_requires_recurring_price(monkeypatch):
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+    monkeypatch.setenv("STRIPE_PRICE_ID", "price_test_one_time")
+
+    class _CheckoutSession:
+        @staticmethod
+        def create(**kwargs):
+            return {"url": "https://checkout.stripe.test/session_123"}
+
+    class _Checkout:
+        Session = _CheckoutSession
+
+    class _Price:
+        @staticmethod
+        def retrieve(_price_id):
+            return {"id": _price_id, "recurring": None}
+
+    class _StripeStub:
+        api_key = None
+        checkout = _Checkout
+        Price = _Price
+
+    import main as _main
+    monkeypatch.setattr(_main, "stripe", _StripeStub)
+
+    client.post(
+        "/api/v1/webhook/clerk",
+        json={"type": "user.created", "data": {"id": "clerk-nonrecurring-user", "email": "x@example.com"}},
+    )
+
+    resp = client.post("/api/v1/create-checkout-session", json={"user_id": "clerk-nonrecurring-user"})
+    assert resp.status_code == 400, resp.text
+
+
+def test_billing_overview_returns_next_payment_and_history(monkeypatch):
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test_dummy")
+
+    class _Webhook:
+        @staticmethod
+        def construct_event(payload, sig, secret):
+            assert sig == "t=1,v1=abc"
+            assert secret == "whsec_test_dummy"
+            return {
+                "type": "checkout.session.completed",
+                "data": {
+                    "object": {
+                        "metadata": {"user_id": "clerk-billing-user"},
+                        "subscription": "sub_123",
+                        "customer": "cus_123",
+                        "amount_total": 2900,
+                        "currency": "usd",
+                        "invoice": "in_123",
+                        "payment_intent": "pi_123",
+                    }
+                },
+            }
+
+    class _Subscription:
+        @staticmethod
+        def retrieve(_sub_id):
+            return {
+                "id": "sub_123",
+                "status": "active",
+                "current_period_end": 1893456000,
+                "cancel_at_period_end": False,
+            }
+
+    class _StripeStub:
+        api_key = None
+        Webhook = _Webhook
+        Subscription = _Subscription
+
+    import main as _main
+    monkeypatch.setattr(_main, "stripe", _StripeStub)
+
+    client.post(
+        "/api/v1/webhook/clerk",
+        json={"type": "user.created", "data": {"id": "clerk-billing-user", "email": "billing@example.com"}},
+    )
+
+    webhook_resp = client.post(
+        "/api/v1/webhook/stripe",
+        headers={"Stripe-Signature": "t=1,v1=abc", "Content-Type": "application/json"},
+        data="{}",
+    )
+    assert webhook_resp.status_code == 200, webhook_resp.text
+
+    billing_resp = client.get("/api/v1/billing/clerk-billing-user")
+    assert billing_resp.status_code == 200, billing_resp.text
+    billing = billing_resp.json()
+    assert billing["plan"] == "PRO"
+    assert billing["subscription"]["next_payment_at"] is not None
+    assert len(billing["history"]) >= 1
+
+
+def test_subscription_deleted_downgrades_plan(monkeypatch):
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test_dummy")
+
+    class _Webhook:
+        @staticmethod
+        def construct_event(payload, sig, secret):
+            assert sig == "t=1,v1=abc"
+            assert secret == "whsec_test_dummy"
+            return {
+                "type": "customer.subscription.deleted",
+                "data": {
+                    "object": {
+                        "id": "sub_delete_123",
+                        "status": "canceled",
+                        "current_period_end": 1700000000,
+                        "cancel_at_period_end": True,
+                        "customer": "cus_del_1",
+                    }
+                },
+            }
+
+    class _StripeStub:
+        api_key = None
+        Webhook = _Webhook
+
+    from db import SessionLocal, create_user_if_not_exists, upsert_subscription, get_user
+    db = SessionLocal()
+    try:
+        u = create_user_if_not_exists(db, "clerk-sub-delete", "delete@example.com", plan="PRO")
+        upsert_subscription(
+            db,
+            user_id=u.id,
+            stripe_customer_id="cus_del_1",
+            stripe_subscription_id="sub_delete_123",
+            status="active",
+            current_period_end=None,
+        )
+    finally:
+        db.close()
+
+    import main as _main
+    monkeypatch.setattr(_main, "stripe", _StripeStub)
+
+    resp = client.post(
+        "/api/v1/webhook/stripe",
+        headers={"Stripe-Signature": "t=1,v1=abc", "Content-Type": "application/json"},
+        data="{}",
+    )
+    assert resp.status_code == 200, resp.text
+
+    db = SessionLocal()
+    try:
+        u = get_user(db, "clerk-sub-delete")
+        assert (u.plan or "").upper() == "FREE"
+    finally:
+        db.close()
 
 
 def test_stripe_webhook_checkout_completed_upgrades_user(monkeypatch):

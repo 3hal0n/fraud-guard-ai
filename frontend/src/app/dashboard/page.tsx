@@ -275,7 +275,7 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1" || process.env.NODE_ENV !== "production") && (
+            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1") && (
               <Link href="/dashboard/api-hub" className="group bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 hover:border-white/20 transition-all flex items-center gap-4 shadow-xl">
                 <div className="w-12 h-12 bg-[#121214] border border-white/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                   <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 6h3m-7.5 6h12m-9 6h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" /></svg>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
               </Link>
             )}
 
-            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1" || process.env.NODE_ENV !== "production") && (
+            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1") && (
               <Link href="/dashboard/bulk-audit" className="group bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 hover:border-white/20 transition-all flex items-center gap-4 shadow-xl">
                 <div className="w-12 h-12 bg-[#121214] border border-white/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                   <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7h16M4 12h16M4 17h10m4 0l2-2m0 0l-2-2m2 2H14" /></svg>

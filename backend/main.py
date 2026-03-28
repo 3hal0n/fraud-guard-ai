@@ -7,6 +7,7 @@ import uuid
 import os
 import csv
 import importlib
+from datetime import datetime, timezone
 from db import (
     SessionLocal,
     create_tables,
@@ -15,8 +16,13 @@ from db import (
     get_user_telemetry_counts,
     increment_usage,
     save_transaction,
+    save_or_update_payment,
+    get_payment_history,
+    get_subscription_by_stripe_subscription_id,
+    get_subscription_by_user,
     set_user_api_key,
     set_user_plan,
+    upsert_subscription,
     Transaction as TxModel,
 )
 import logging
@@ -50,6 +56,12 @@ async def lifespan(app: FastAPI):
     """Runs startup logic before the server starts accepting requests,
     and teardown logic when it shuts down."""
     # ---- startup ----
+    try:
+        create_tables()
+        logger.info("Database tables verified")
+    except Exception as exc:
+        logger.warning("Table verification failed on startup: %s", exc)
+
     try:
         load_models()
         logger.info("ML models loaded successfully via lifespan")
@@ -99,6 +111,15 @@ def _get_stripe_client():
 
     stripe_module.api_key = secret_key
     return stripe_module
+
+
+def _ts_to_datetime(value):
+    if value is None:
+        return None
+    try:
+        return datetime.fromtimestamp(int(value), tz=timezone.utc)
+    except Exception:
+        return None
 
 
 @app.post("/api/v1/webhook/clerk")
@@ -165,6 +186,18 @@ async def create_checkout_session(payload: CheckoutSessionRequest):
         if not price_id:
             raise HTTPException(status_code=500, detail="STRIPE_PRICE_ID is not configured")
 
+        try:
+            configured_price = stripe_client.Price.retrieve(price_id)
+            if not configured_price.get("recurring"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Configured Stripe price is not recurring. Please set STRIPE_PRICE_ID to a recurring monthly/annual price.",
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=502, detail="Unable to validate configured Stripe price")
+
         session = stripe_client.checkout.Session.create(
             mode="subscription",
             line_items=[{"price": price_id, "quantity": 1}],
@@ -229,10 +262,172 @@ async def stripe_webhook(request: Request, stripe_signature: str | None = Header
                 from db import create_user_if_not_exists
                 user = create_user_if_not_exists(db, user_id)
             set_user_plan(db, user, "PRO")
+
+            stripe_subscription_id = session_obj.get("subscription")
+            stripe_customer_id = session_obj.get("customer")
+            period_end = None
+            sub_status = "active"
+            cancel_at_period_end = False
+            if stripe_subscription_id:
+                try:
+                    sub = stripe_client.Subscription.retrieve(stripe_subscription_id)
+                    period_end = _ts_to_datetime(sub.get("current_period_end"))
+                    sub_status = (sub.get("status") or "active").lower()
+                    cancel_at_period_end = bool(sub.get("cancel_at_period_end"))
+                except Exception as sub_exc:
+                    logger.warning("Failed to fetch Stripe subscription details: %s", sub_exc)
+
+            upsert_subscription(
+                db,
+                user_id=user_id,
+                stripe_customer_id=stripe_customer_id,
+                stripe_subscription_id=stripe_subscription_id,
+                status=sub_status,
+                current_period_end=period_end,
+                cancel_at_period_end=cancel_at_period_end,
+            )
+
+            amount_total = (session_obj.get("amount_total") or 0) / 100.0
+            currency = (session_obj.get("currency") or "usd").lower()
+            save_or_update_payment(
+                db,
+                user_id=user_id,
+                amount=amount_total,
+                currency=currency,
+                status="paid",
+                paid_at=datetime.now(timezone.utc),
+                stripe_invoice_id=session_obj.get("invoice"),
+                stripe_payment_intent_id=session_obj.get("payment_intent"),
+            )
+        finally:
+            db.close()
+
+    elif event_type in {"invoice.payment_succeeded", "invoice.payment_failed"}:
+        invoice = event.get("data", {}).get("object", {})
+        stripe_subscription_id = invoice.get("subscription")
+        db = SessionLocal()
+        try:
+            sub_row = None
+            if stripe_subscription_id:
+                sub_row = get_subscription_by_stripe_subscription_id(db, stripe_subscription_id)
+            user_id = sub_row.user_id if sub_row else None
+            if not user_id:
+                logger.warning("Invoice webhook could not map subscription to user")
+                return {"received": True, "ignored": True}
+
+            paid = event_type == "invoice.payment_succeeded"
+            save_or_update_payment(
+                db,
+                user_id=user_id,
+                amount=(invoice.get("amount_paid") or invoice.get("amount_due") or 0) / 100.0,
+                currency=(invoice.get("currency") or "usd").lower(),
+                status="paid" if paid else "failed",
+                paid_at=_ts_to_datetime(invoice.get("status_transitions", {}).get("paid_at")) if paid else datetime.now(timezone.utc),
+                stripe_invoice_id=invoice.get("id"),
+                stripe_payment_intent_id=invoice.get("payment_intent"),
+            )
+
+            period_end = _ts_to_datetime(invoice.get("lines", {}).get("data", [{}])[0].get("period", {}).get("end"))
+            upsert_subscription(
+                db,
+                user_id=user_id,
+                stripe_customer_id=invoice.get("customer"),
+                stripe_subscription_id=stripe_subscription_id,
+                status="active" if paid else "past_due",
+                current_period_end=period_end,
+                cancel_at_period_end=False,
+            )
+            user = get_user(db, user_id)
+            if user:
+                set_user_plan(db, user, "PRO" if paid else "FREE")
+        finally:
+            db.close()
+
+    elif event_type in {"customer.subscription.updated", "customer.subscription.deleted"}:
+        sub_obj = event.get("data", {}).get("object", {})
+        stripe_subscription_id = sub_obj.get("id")
+        status = (sub_obj.get("status") or "inactive").lower()
+        db = SessionLocal()
+        try:
+            sub_row = get_subscription_by_stripe_subscription_id(db, stripe_subscription_id)
+            if not sub_row:
+                logger.warning("Subscription webhook received for unknown subscription id")
+                return {"received": True, "ignored": True}
+
+            period_end = _ts_to_datetime(sub_obj.get("current_period_end"))
+            cancel_at_period_end = bool(sub_obj.get("cancel_at_period_end"))
+            upsert_subscription(
+                db,
+                user_id=sub_row.user_id,
+                stripe_customer_id=sub_obj.get("customer"),
+                stripe_subscription_id=stripe_subscription_id,
+                status=status,
+                current_period_end=period_end,
+                cancel_at_period_end=cancel_at_period_end,
+            )
+
+            plan = "PRO" if status in {"active", "trialing", "past_due"} else "FREE"
+            user = get_user(db, sub_row.user_id)
+            if user:
+                set_user_plan(db, user, plan)
         finally:
             db.close()
 
     return {"received": True}
+
+
+@app.get("/api/v1/billing/{user_id}")
+async def get_billing_overview(user_id: str, limit: int = 20):
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+
+        subscription = get_subscription_by_user(db, user_id)
+        history = get_payment_history(db, user_id, limit=min(max(limit, 1), 100))
+        now = datetime.now(timezone.utc)
+
+        next_payment_at = subscription.current_period_end if subscription else None
+        if next_payment_at and next_payment_at.tzinfo is None:
+            next_payment_at = next_payment_at.replace(tzinfo=timezone.utc)
+        subscription_status = (subscription.status if subscription else "inactive")
+        is_active = bool(
+            subscription
+            and subscription.status in {"active", "trialing", "past_due"}
+            and (next_payment_at is None or next_payment_at >= now)
+        )
+
+        if user.plan == "PRO" and not is_active:
+            set_user_plan(db, user, "FREE")
+            user = get_user(db, user_id)
+
+        return {
+            "user_id": user_id,
+            "plan": (user.plan or "FREE").upper(),
+            "subscription": {
+                "status": subscription_status,
+                "cancel_at_period_end": bool(subscription.cancel_at_period_end) if subscription else False,
+                "current_period_end": next_payment_at.isoformat() if next_payment_at else None,
+                "next_payment_at": next_payment_at.isoformat() if next_payment_at else None,
+                "stripe_subscription_id": subscription.stripe_subscription_id if subscription else None,
+            },
+            "history": [
+                {
+                    "id": p.id,
+                    "invoice_id": p.stripe_invoice_id,
+                    "amount": float(p.amount),
+                    "currency": p.currency,
+                    "status": p.status,
+                    "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                }
+                for p in history
+            ],
+        }
+    finally:
+        db.close()
 
 
 def _seconds_until_next_utc_midnight():
