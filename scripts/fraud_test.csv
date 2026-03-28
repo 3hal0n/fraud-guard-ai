@@ -1,0 +1,27 @@
+import csv
+
+file_name = "fraud_test.csv"
+data = [
+    ["transaction_id", "date", "merchant", "amount", "category", "test_scenario"],
+    ["T001", "2026-03-22", "Starbucks", "4.50", "Food", "Normal - Should Pass"],
+    ["T002", "2026-03-22", "Amazon", "45.99", "Retail", "Normal - Should Pass"],
+    ["T003", "2026-03-21", "Target", "112.50", "Retail", "Normal - Should Pass"],
+    ["T004", "2026-03-22", "CryptoExchange.xyz", "9999.00", "Investment", "Fraud - High Amount / Risky Merchant"],
+    ["T005", "2026-03-22", "Vegas Casino Online", "5000.00", "Gambling", "Fraud - High Risk Category"],
+    ["T006", "2026-03-22", "Unknown Offshore Ltd", "850.00", "Unknown", "Fraud - Suspicious Merchant"],
+    ["T007", "2026-03-22", "Electronics Mega Store", "4999.99", "Electronics", "Fraud - High Value Electronics"],
+    ["T008", "2026-03-22", "", "25.00", "Retail", "Invalid - Missing Merchant"],
+    ["T009", "2026-03-22", "Walmart", "", "Retail", "Invalid - Missing Amount"],
+    ["T010", "2026-03-22", "BestBuy", "invalid_amount", "Electronics", "Invalid - Malformed Amount"],
+    ["T011", "2026-03-22", "Netflix", "15.99", "Subscription", "Normal - Should Pass"],
+    ["T012", "2026-03-22", "Fake Charity Scam", "250.00", "Donation", "Fraud - Scam Keyword"],
+    ["T013", "", "", "", "0.00", "Invalid - Missing Required Fields"],
+    ["T014", "2026-03-22", "Apple Store", "3500.00", "Electronics", "Fraud - High Value"],
+    ["T015", "2026-03-22", "Local Grocery", "89.20", "Food", "Normal - Should Pass"]
+]
+
+with open(file_name, mode="w", newline="") as file:
+    writer = csv.writer(file)
+    writer.writerows(data)
+
+print(f"Successfully created '{file_name}'")

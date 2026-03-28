@@ -12,7 +12,7 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+const baseNavItems = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -51,6 +51,27 @@ const navItems = [
   },
 ];
 
+const proNavItems = [
+  {
+    name: "API Hub",
+    href: "/dashboard/api-hub",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 6h3m-7.5 6h12m-9 6h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Bulk CSV Audit",
+    href: "/dashboard/bulk-audit",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7h16M4 12h16M4 17h10m4 0l2-2m0 0l-2-2m2 2H14" />
+      </svg>
+    ),
+  },
+];
+
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const isDashboard = pathname?.startsWith("/dashboard");
@@ -72,6 +93,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Allow showing Pro features during local development/testing. In production
+  // this will be false unless the user actually has a PRO plan.
+  const allowProForTesting = process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1";
+  const navItems = userInfo?.plan === "PRO" || allowProForTesting ? [...baseNavItems, ...proNavItems] : baseNavItems;
 
   useEffect(() => {
     if (!user?.id) return;
@@ -159,7 +184,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="flex items-center gap-3 overflow-hidden">
               {clerkEnabled ? (
                 <>
-                  <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
+                  <div className="relative">
+                    <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
+                    {userInfo?.plan === "PRO" && (
+                      <span className="absolute -top-1 -right-1 rounded-full bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold leading-none text-black border border-cyan-300">
+                        PRO
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">
                       {user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "Loading..."}

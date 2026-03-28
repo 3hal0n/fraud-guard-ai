@@ -1,14 +1,136 @@
 "use client";
+/* eslint-disable react-hooks/rules-of-hooks */
 
 import AppLayout from "@/components/AppLayout";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
+import {
+  ApiError,
+  BillingOverview,
+  createCheckoutSession,
+  getBillingOverview,
+  getUserInfo,
+  UserInfo,
+} from "@/lib/api";
 
 export default function BillingPage() {
-  const [currentPlan] = useState<"free" | "pro">("free");
-  const usedChecks = 3;
-  const maxChecks = 5;
-  const usagePercentage = (usedChecks / maxChecks) * 100;
+  const [upgradeState, setUpgradeState] = useState<string | null>(null);
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  let user: { id?: string } | null = null;
+  if (clerkEnabled) {
+    const u = useUser();
+    user = u?.user ?? null;
+  }
+
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [billing, setBilling] = useState<BillingOverview | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setUpgradeState(params.get("upgrade"));
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setLoadingInfo(false);
+      return;
+    }
+
+    Promise.all([getUserInfo(user.id), getBillingOverview(user.id)])
+      .then(([info, overview]) => {
+        setUserInfo(info);
+        setBilling(overview);
+      })
+      .catch(() => setApiError("Failed to load billing profile."))
+      .finally(() => setLoadingInfo(false));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || upgradeState !== "success") return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 8;
+
+    const pollUntilPro = async () => {
+      attempts += 1;
+      try {
+        const [info, overview] = await Promise.all([
+          getUserInfo(user.id as string),
+          getBillingOverview(user.id as string),
+        ]);
+
+        if (cancelled) return;
+        setUserInfo(info);
+        setBilling(overview);
+
+        if ((info.plan || "FREE").toUpperCase() === "PRO") {
+          setApiError(null);
+          return;
+        }
+      } catch {
+        // ignore transient polling errors
+      }
+
+      if (!cancelled && attempts < maxAttempts) {
+        setTimeout(pollUntilPro, 2000);
+      }
+    };
+
+    pollUntilPro();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, upgradeState]);
+
+  const currentPlan = useMemo<"free" | "pro">(() => {
+    if (((billing?.plan || userInfo?.plan || "FREE").toUpperCase() === "PRO")) return "pro";
+    return "free";
+  }, [billing?.plan, userInfo?.plan]);
+
+  const usedChecks = userInfo?.daily_usage ?? 0;
+  const maxChecks = userInfo?.daily_limit ?? 5;
+  const usagePercentage = maxChecks > 0 ? (usedChecks / maxChecks) * 100 : 0;
+  const nextPaymentAt = billing?.subscription?.next_payment_at;
+
+  const formattedNextPayment = useMemo(() => {
+    if (!nextPaymentAt) return "Not scheduled";
+    const dt = new Date(nextPaymentAt);
+    if (Number.isNaN(dt.getTime())) return "Not scheduled";
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(dt);
+  }, [nextPaymentAt]);
+
+  const billingHistory = billing?.history || [];
+
+  const handleUpgrade = async () => {
+    if (!user?.id) {
+      setApiError("You must be signed in to upgrade.");
+      return;
+    }
+
+    setApiError(null);
+    setIsRedirecting(true);
+    try {
+      const { checkout_url } = await createCheckoutSession(user.id);
+      if (!checkout_url) {
+        throw new Error("Missing checkout URL from server.");
+      }
+      window.location.href = checkout_url;
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setApiError(apiErr.detail || "Failed to start checkout session.");
+      setIsRedirecting(false);
+    }
+  };
 
   return (
     <AppLayout>
@@ -17,6 +139,12 @@ export default function BillingPage() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-3xl font-medium text-white mb-2 tracking-tight">Billing & Plans</h1>
           <p className="text-slate-400">Manage your subscription and API usage.</p>
+          {upgradeState === "success" && (
+            <p className="mt-3 text-sm text-cyan-400">Payment successful. Syncing your subscription status...</p>
+          )}
+          {upgradeState === "cancel" && (
+            <p className="mt-3 text-sm text-amber-400">Checkout was canceled. You can retry anytime.</p>
+          )}
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -40,7 +168,7 @@ export default function BillingPage() {
               </div>
               <div className="p-5 bg-[#121214] rounded-2xl border border-white/5">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Limit</p>
-                <p className="text-2xl font-light text-white">{currentPlan === "free" ? "5" : "∞"}<span className="text-sm text-slate-600">/day</span></p>
+                <p className="text-2xl font-light text-white">{currentPlan === "free" ? "5" : "Unlimited"}<span className="text-sm text-slate-600">{currentPlan === "free" ? "/day" : ""}</span></p>
               </div>
               <div className="p-5 bg-[#121214] rounded-2xl border border-white/5">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Support</p>
@@ -48,14 +176,26 @@ export default function BillingPage() {
               </div>
             </div>
 
+            {currentPlan === "pro" && (
+              <div className="bg-[#121214] p-5 rounded-2xl border border-cyan-500/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400 uppercase tracking-wider">Next Payment</span>
+                  <span className="text-sm font-medium text-cyan-300">{formattedNextPayment}</span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Subscription status: {(billing?.subscription?.status || "inactive").replace("_", " ")}
+                </p>
+              </div>
+            )}
+
             {currentPlan === "free" && (
               <div className="bg-[#121214] p-5 rounded-2xl border border-white/5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs text-slate-400 uppercase tracking-wider">Today&apos;s API Usage</span>
-                  <span className="text-sm font-medium text-white">{usedChecks} / {maxChecks}</span>
+                  <span className="text-sm font-medium text-white">{loadingInfo ? "-" : `${usedChecks} / ${maxChecks}`}</span>
                 </div>
                 <div className="relative w-full h-1.5 bg-black rounded-full overflow-hidden">
-                  <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500" style={{ width: `${usagePercentage}%` }} />
+                  <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500" style={{ width: `${Math.min(usagePercentage, 100)}%` }} />
                 </div>
               </div>
             )}
@@ -86,9 +226,14 @@ export default function BillingPage() {
                 ))}
               </ul>
 
-              <button className="relative z-10 w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-medium transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95">
-                Upgrade Now
+              <button
+                onClick={handleUpgrade}
+                disabled={isRedirecting || loadingInfo}
+                className="relative z-10 w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-medium transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isRedirecting ? "Redirecting..." : "Upgrade to Pro"}
               </button>
+              {apiError && <p className="relative z-10 text-red-400 text-xs mt-3">{apiError}</p>}
             </motion.div>
           )}
         </div>
@@ -97,24 +242,23 @@ export default function BillingPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-[#0A0A0A] border border-white/5 rounded-[2rem] p-8">
           <h2 className="text-lg font-medium text-white mb-6">Billing History</h2>
           
-          {currentPlan === "free" ? (
+          {billingHistory.length === 0 ? (
             <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
-              <p className="text-slate-500 text-sm">No billing history yet. Upgrade to Pro to view invoices.</p>
+              <p className="text-slate-500 text-sm">No billing records yet. Completed Stripe payments will appear here.</p>
             </div>
           ) : (
              <div className="space-y-3">
-              {[{ date: "Jan 10, 2026", amount: "$29.00", status: "Paid", id: "INV-2026-001" }, { date: "Dec 10, 2025", amount: "$29.00", status: "Paid", id: "INV-2025-012" }].map((inv, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-[#121214] rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+              {billingHistory.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between p-4 bg-[#121214] rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                   <div>
-                    <p className="text-sm font-medium text-white">{inv.id}</p>
-                    <p className="text-xs text-slate-500">{inv.date}</p>
+                    <p className="text-sm font-medium text-white">{inv.invoice_id || `PAY-${inv.id}`}</p>
+                    <p className="text-xs text-slate-500">{new Date(inv.paid_at || inv.created_at || Date.now()).toLocaleDateString()}</p>
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="text-right">
-                      <p className="text-sm font-medium text-white">{inv.amount}</p>
-                      <p className="text-xs text-cyan-400">{inv.status}</p>
+                      <p className="text-sm font-medium text-white">{new Intl.NumberFormat("en-US", { style: "currency", currency: (inv.currency || "USD").toUpperCase() }).format(inv.amount)}</p>
+                      <p className={`text-xs ${(inv.status || "").toLowerCase() === "paid" ? "text-cyan-400" : "text-amber-400"}`}>{inv.status}</p>
                     </div>
-                    <button className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white text-xs font-medium rounded-lg transition-colors border border-white/5">PDF</button>
                   </div>
                 </div>
               ))}

@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
-import { getUserInfo, getTransactions, UserInfo, TransactionRecord } from "@/lib/api";
+import { getUserInfo, getTransactions, getTelemetrySummary, UserInfo, TransactionRecord, TelemetrySummary } from "@/lib/api";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -22,6 +22,7 @@ export default function DashboardPage() {
   }
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [recentTxns, setRecentTxns] = useState<TransactionRecord[]>([]);
+  const [telemetry, setTelemetry] = useState<TelemetrySummary | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -82,10 +83,12 @@ export default function DashboardPage() {
     Promise.all([
       getUserInfo(user.id),
       getTransactions(user.id, 100),
+      getTelemetrySummary(user.id),
     ])
-      .then(([info, txns]) => {
+      .then(([info, txns, summary]) => {
         setUserInfo(info);
         setRecentTxns(txns);
+        setTelemetry(summary);
       })
       .catch(() => null)
       .finally(() => setLoadingInfo(false));
@@ -107,9 +110,9 @@ export default function DashboardPage() {
           
           {/* Left Column: Usage Tracker + Small Stats */}
           <div className="flex flex-col gap-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col gap-5 shadow-2xl lg:self-start">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col gap-5 shadow-2xl w-full">
             <div>
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-6 ">
                 <div>
                   <h2 className="text-base sm:text-lg font-medium text-white mb-1">Daily Usage</h2>
                   <p className="text-xs text-slate-500 uppercase tracking-widest">API Limits</p>
@@ -149,7 +152,7 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Small Stats Card under Daily Usage */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-4 sm:p-6 shadow-md">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-4 sm:p-6 shadow-md w-full">
               <h3 className="text-sm font-medium text-white mb-3">Quick Stats</h3>
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 bg-[#0E0E10] rounded-lg text-center">
@@ -176,23 +179,23 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-500 uppercase tracking-widest">Monthly Performance</p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-light text-white">{loadingInfo ? "–" : recentTxns.length}</p>
+                <p className="text-2xl font-light text-white">{loadingInfo ? "–" : (telemetry?.total_scans ?? 0)}</p>
                 <p className="text-xs text-cyan-400 font-medium">Total Scans</p>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="rounded-xl border border-white/5 bg-[#121214] p-3">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Total Sales</p>
-                <p className="text-xl font-medium text-white mt-1">$21,356</p>
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Total Scans</p>
+                <p className="text-xl font-medium text-white mt-1">{loadingInfo ? "-" : (telemetry?.total_scans ?? 0)}</p>
               </div>
               <div className="rounded-xl border border-white/5 bg-[#121214] p-3">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Average</p>
-                <p className="text-xl font-medium text-white mt-1">$1,935</p>
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">High Risk Detected</p>
+                <p className="text-xl font-medium text-red-400 mt-1">{loadingInfo ? "-" : (telemetry?.high_risk_detected ?? 0)}</p>
               </div>
               <div className="rounded-xl border border-white/5 bg-[#121214] p-3">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Growth</p>
-                <p className="text-xl font-medium text-cyan-400 mt-1">+18.2%</p>
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">Risk Rate</p>
+                <p className="text-xl font-medium text-cyan-400 mt-1">{loadingInfo ? "-" : `${blockedPercent}%`}</p>
               </div>
             </div>
 
@@ -271,6 +274,30 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-500">Access past reports</p>
               </div>
             </Link>
+
+            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1") && (
+              <Link href="/dashboard/api-hub" className="group bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 hover:border-white/20 transition-all flex items-center gap-4 shadow-xl">
+                <div className="w-12 h-12 bg-[#121214] border border-white/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 6h3m-7.5 6h12m-9 6h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" /></svg>
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-0.5 text-sm sm:text-base">Developer API Hub</h3>
+                  <p className="text-xs text-slate-500">Generate and use API keys</p>
+                </div>
+              </Link>
+            )}
+
+            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1") && (
+              <Link href="/dashboard/bulk-audit" className="group bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 hover:border-white/20 transition-all flex items-center gap-4 shadow-xl">
+                <div className="w-12 h-12 bg-[#121214] border border-white/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7h16M4 12h16M4 17h10m4 0l2-2m0 0l-2-2m2 2H14" /></svg>
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-0.5 text-sm sm:text-base">Bulk CSV Audit</h3>
+                  <p className="text-xs text-slate-500">Scan up to 100 rows at once</p>
+                </div>
+              </Link>
+            )}
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="lg:col-span-2 bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col shadow-2xl">
@@ -316,7 +343,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-              <p className="text-xs text-slate-400">System is currently identifying <strong className="text-red-400">2</strong> high-risk anomalies.</p>
+              <p className="text-xs text-slate-400">System has currently identified <strong className="text-red-400">{loadingInfo ? "-" : (telemetry?.high_risk_detected ?? 0)}</strong> high-risk rows.</p>
             </div>
           </motion.div>
         </div>
