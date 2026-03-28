@@ -172,6 +172,33 @@ export interface ApiKeyResponse {
   api_key: string | null;
   has_api_key?: boolean;
   generated?: boolean;
+  key_id?: number;
+  key_prefix?: string | null;
+  latest_key_prefix?: string | null;
+  project_name?: string;
+  keys?: ApiKeyItem[];
+}
+
+export interface ApiKeyItem {
+  id: number;
+  project_name: string;
+  key_prefix: string;
+  is_active: boolean;
+  created_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface ApiKeyListResponse {
+  user_id: string;
+  keys: ApiKeyItem[];
+}
+
+export interface RevokeApiKeyResponse {
+  user_id: string;
+  key_id: number;
+  revoked: boolean;
+  revoked_at: string | null;
 }
 
 /** GET /api/v1/user/:id/api-key */
@@ -180,8 +207,21 @@ export async function getUserApiKey(userId: string): Promise<ApiKeyResponse> {
 }
 
 /** POST /api/v1/user/:id/api-key */
-export async function generateUserApiKey(userId: string): Promise<ApiKeyResponse> {
+export async function generateUserApiKey(userId: string, projectName: string): Promise<ApiKeyResponse> {
   return request<ApiKeyResponse>(`/api/v1/user/${userId}/api-key`, {
+    method: "POST",
+    body: JSON.stringify({ project_name: projectName }),
+  });
+}
+
+/** GET /api/v1/user/:id/api-keys */
+export async function listUserApiKeys(userId: string): Promise<ApiKeyListResponse> {
+  return request<ApiKeyListResponse>(`/api/v1/user/${userId}/api-keys`);
+}
+
+/** POST /api/v1/user/:id/api-keys/:keyId/revoke */
+export async function revokeUserApiKey(userId: string, keyId: number): Promise<RevokeApiKeyResponse> {
+  return request<RevokeApiKeyResponse>(`/api/v1/user/${userId}/api-keys/${keyId}/revoke`, {
     method: "POST",
   });
 }

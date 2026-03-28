@@ -20,7 +20,9 @@ from db import (
     get_payment_history,
     get_subscription_by_stripe_subscription_id,
     get_subscription_by_user,
-    set_user_api_key,
+    create_project_api_key,
+    list_user_api_keys,
+    revoke_api_key,
     set_user_plan,
     upsert_subscription,
     Transaction as TxModel,
@@ -46,6 +48,10 @@ class TransactionRequest(BaseModel):
 
 class CheckoutSessionRequest(BaseModel):
     user_id: str
+
+
+class ApiKeyCreateRequest(BaseModel):
+    project_name: str
 
 # ---------------------------------------------------------------------------
 # Lifespan: load ML models + start background jobs once at startup
@@ -600,17 +606,33 @@ async def get_user_api_key(user_id: str):
             user = create_user_if_not_exists(db, user_id)
         if (user.plan or "FREE").upper() != "PRO":
             raise HTTPException(status_code=403, detail="API keys are available on the PRO plan")
+        keys = list_user_api_keys(db, user_id)
+        active = [k for k in keys if k.is_active]
+        latest = active[0] if active else None
         return {
             "user_id": user.id,
-            "api_key": user.api_key,
-            "has_api_key": bool(user.api_key),
+            "api_key": None,
+            "has_api_key": bool(active),
+            "latest_key_prefix": latest.key_prefix if latest else None,
+            "keys": [
+                {
+                    "id": k.id,
+                    "project_name": k.project_name,
+                    "key_prefix": k.key_prefix,
+                    "is_active": bool(k.is_active),
+                    "created_at": k.created_at.isoformat() if k.created_at else None,
+                    "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+                    "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None,
+                }
+                for k in keys
+            ],
         }
     finally:
         db.close()
 
 
 @app.post("/api/v1/user/{user_id}/api-key")
-async def generate_user_api_key(user_id: str):
+async def generate_user_api_key(user_id: str, payload: ApiKeyCreateRequest | None = None):
     db = SessionLocal()
     try:
         user = get_user(db, user_id)
@@ -621,12 +643,75 @@ async def generate_user_api_key(user_id: str):
         if (user.plan or "FREE").upper() != "PRO":
             raise HTTPException(status_code=403, detail="API keys are available on the PRO plan")
 
-        api_key = str(uuid.uuid4())
-        user = set_user_api_key(db, user, api_key)
+        project_name = (payload.project_name if payload else "Default").strip() if payload else "Default"
+        if not project_name:
+            raise HTTPException(status_code=400, detail="project_name is required")
+        if len(project_name) > 100:
+            raise HTTPException(status_code=400, detail="project_name must be 100 characters or fewer")
+
+        created, raw_key = create_project_api_key(db, user_id=user.id, project_name=project_name)
         return {
             "user_id": user.id,
-            "api_key": user.api_key,
+            "api_key": raw_key,
+            "project_name": created.project_name,
+            "key_id": created.id,
+            "key_prefix": created.key_prefix,
             "generated": True,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/user/{user_id}/api-keys")
+async def list_api_keys(user_id: str):
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+        if (user.plan or "FREE").upper() != "PRO":
+            raise HTTPException(status_code=403, detail="API keys are available on the PRO plan")
+
+        keys = list_user_api_keys(db, user_id)
+        return {
+            "user_id": user.id,
+            "keys": [
+                {
+                    "id": k.id,
+                    "project_name": k.project_name,
+                    "key_prefix": k.key_prefix,
+                    "is_active": bool(k.is_active),
+                    "created_at": k.created_at.isoformat() if k.created_at else None,
+                    "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+                    "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None,
+                }
+                for k in keys
+            ],
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/v1/user/{user_id}/api-keys/{key_id}/revoke")
+async def revoke_user_api_key(user_id: str, key_id: int):
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if (user.plan or "FREE").upper() != "PRO":
+            raise HTTPException(status_code=403, detail="API keys are available on the PRO plan")
+
+        row = revoke_api_key(db, key_id=key_id, user_id=user_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="API key not found")
+
+        return {
+            "user_id": user_id,
+            "key_id": row.id,
+            "revoked": True,
+            "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
         }
     finally:
         db.close()

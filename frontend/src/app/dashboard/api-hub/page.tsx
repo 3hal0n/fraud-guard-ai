@@ -4,7 +4,16 @@
 import AppLayout from "@/components/AppLayout";
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { ApiError, generateUserApiKey, getUserApiKey, getUserInfo, UserInfo } from "@/lib/api";
+import {
+  ApiError,
+  ApiKeyItem,
+  generateUserApiKey,
+  getUserApiKey,
+  getUserInfo,
+  listUserApiKeys,
+  revokeUserApiKey,
+  UserInfo,
+} from "@/lib/api";
 import { motion } from "framer-motion";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
@@ -19,18 +28,27 @@ export default function ApiHubPage() {
 
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Default");
+  const [keys, setKeys] = useState<ApiKeyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [revokingId, setRevokingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const loadApiKeys = async (userId: string) => {
+    const keyList = await listUserApiKeys(userId);
+    setKeys(keyList.keys || []);
+  };
 
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
-    Promise.all([getUserInfo(user.id), getUserApiKey(user.id)])
-      .then(([info, keyInfo]) => {
+    Promise.all([getUserInfo(user.id), getUserApiKey(user.id), listUserApiKeys(user.id)])
+      .then(([info, keyInfo, keyList]) => {
         setUserInfo(info);
         setApiKey(keyInfo.api_key);
+        setKeys(keyList.keys || []);
       })
       .catch((err: unknown) => {
         const apiErr = err as ApiError;
@@ -83,13 +101,29 @@ print(response.json())`;
     setGenerating(true);
     setError(null);
     try {
-      const res = await generateUserApiKey(user.id);
+      const res = await generateUserApiKey(user.id, projectName.trim() || "Default");
       setApiKey(res.api_key);
+      await loadApiKeys(user.id);
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       setError(apiErr.detail || "Could not generate API key.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const onRevoke = async (keyId: number) => {
+    if (!user?.id) return;
+    setRevokingId(keyId);
+    setError(null);
+    try {
+      await revokeUserApiKey(user.id, keyId);
+      await loadApiKeys(user.id);
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail || "Could not revoke API key.");
+    } finally {
+      setRevokingId(null);
     }
   };
 
@@ -123,10 +157,17 @@ print(response.json())`;
             <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-8">
               <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">Current API Key</p>
-                  <p className="font-mono text-sm text-cyan-300 break-all">{apiKey || "No key generated yet."}</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">Newly Generated API Key (shown once)</p>
+                  <p className="font-mono text-sm text-cyan-300 break-all">{apiKey || "Generate a key to reveal it once."}</p>
+                  <p className="text-xs text-slate-500 mt-2">Stored securely as hash. You cannot retrieve full key again later.</p>
                 </div>
                 <div className="flex gap-3">
+                  <input
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="Project name"
+                    className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm"
+                  />
                   <button
                     onClick={onGenerate}
                     disabled={generating}
@@ -144,6 +185,34 @@ print(response.json())`;
                 </div>
               </div>
               {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+            </div>
+
+            <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6">
+              <h3 className="text-white font-medium mb-3">Project API Keys</h3>
+              {keys.length === 0 ? (
+                <p className="text-slate-400 text-sm">No keys yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {keys.map((k) => (
+                    <div key={k.id} className="border border-white/10 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="text-white text-sm font-medium">{k.project_name}</p>
+                        <p className="text-cyan-300 font-mono text-xs">{k.key_prefix}...{k.is_active ? " (active)" : " (revoked)"}</p>
+                        <p className="text-slate-500 text-xs">Last used: {k.last_used_at || "never"}</p>
+                      </div>
+                      {k.is_active ? (
+                        <button
+                          onClick={() => onRevoke(k.id)}
+                          disabled={revokingId === k.id}
+                          className="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 text-sm disabled:opacity-60"
+                        >
+                          {revokingId === k.id ? "Revoking..." : "Revoke"}
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">

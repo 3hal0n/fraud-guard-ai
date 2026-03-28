@@ -147,6 +147,57 @@ def test_api_key_generation_and_direct_analyze():
     assert "status" in analyze_resp.json()
 
 
+def test_api_key_project_name_list_and_revoke_flow():
+    client.post("/api/v1/webhook/clerk", json={
+        "type": "user.created",
+        "data": {"id": "clerk-api-proj-user", "email": "apiproj@example.com"},
+    })
+
+    from db import SessionLocal, get_user
+    db = SessionLocal()
+    try:
+        u = get_user(db, "clerk-api-proj-user")
+        u.plan = "PRO"
+        db.add(u)
+        db.commit()
+    finally:
+        db.close()
+
+    create_resp = client.post(
+        "/api/v1/user/clerk-api-proj-user/api-key",
+        json={"project_name": "Billing Service"},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    created = create_resp.json()
+    assert created["project_name"] == "Billing Service"
+    assert created["api_key"].startswith("fg_live_")
+    key_id = created["key_id"]
+    raw_key = created["api_key"]
+
+    list_resp = client.get("/api/v1/user/clerk-api-proj-user/api-keys")
+    assert list_resp.status_code == 200, list_resp.text
+    listed = list_resp.json()["keys"]
+    assert any(k["project_name"] == "Billing Service" for k in listed)
+
+    ok_before_revoke = client.post(
+        "/api/v1/analyze",
+        headers={"X-API-Key": raw_key},
+        json={"amount": 40.0, "merchant": "bookstore", "location": "Dallas"},
+    )
+    assert ok_before_revoke.status_code == 200, ok_before_revoke.text
+
+    revoke_resp = client.post(f"/api/v1/user/clerk-api-proj-user/api-keys/{key_id}/revoke")
+    assert revoke_resp.status_code == 200, revoke_resp.text
+    assert revoke_resp.json()["revoked"] is True
+
+    denied_after_revoke = client.post(
+        "/api/v1/analyze",
+        headers={"X-API-Key": raw_key},
+        json={"amount": 41.0, "merchant": "bookstore", "location": "Dallas"},
+    )
+    assert denied_after_revoke.status_code == 401, denied_after_revoke.text
+
+
 def test_bulk_csv_requires_pro_and_returns_rows():
     client.post("/api/v1/webhook/clerk", json={
         "type": "user.created",

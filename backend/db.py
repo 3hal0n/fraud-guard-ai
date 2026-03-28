@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import re
+import hashlib
+import secrets
 from sqlalchemy import create_engine, Column, Integer, String, Numeric, DateTime, ForeignKey, func, Boolean
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -108,6 +110,20 @@ class Payment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+    __table_args__ = {"schema": DB_SCHEMA} if DB_SCHEMA else {}
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id" if IS_SQLITE else "fraudguard.users.id"), nullable=False, index=True)
+    project_name = Column(String, nullable=False)
+    key_prefix = Column(String, nullable=False, index=True)
+    key_hash = Column(String, nullable=False, unique=True, index=True)
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 def create_tables():
     if engine is None:
         return
@@ -119,7 +135,25 @@ def get_user(db, user_id: str):
 
 
 def get_user_by_api_key(db, api_key: str):
-    return db.query(User).filter(User.api_key == api_key).first()
+    # Backward compatibility path: old plaintext key in users.api_key.
+    legacy_user = db.query(User).filter(User.api_key == api_key).first()
+    if legacy_user:
+        return legacy_user
+
+    if not api_key:
+        return None
+    hashed = _hash_api_key(api_key)
+    row = (
+        db.query(ApiKey)
+        .filter(ApiKey.key_hash == hashed, ApiKey.is_active.is_(True))
+        .first()
+    )
+    if not row:
+        return None
+    row.last_used_at = datetime.utcnow()
+    db.add(row)
+    db.commit()
+    return get_user(db, row.user_id)
 
 
 def increment_usage(db, user: User, amount: int = 1):
@@ -174,6 +208,61 @@ def set_user_plan(db, user: User, plan: str):
     db.commit()
     db.refresh(user)
     return user
+
+
+def _api_key_pepper() -> str:
+    # Optional app-level pepper for additional safety of at-rest hashes.
+    return os.environ.get("API_KEY_PEPPER", "")
+
+
+def _hash_api_key(raw_key: str) -> str:
+    material = f"{_api_key_pepper()}::{raw_key}".encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
+
+
+def generate_raw_api_key() -> str:
+    # 256-bit random token, URL-safe, with product prefix.
+    return f"fg_live_{secrets.token_urlsafe(32)}"
+
+
+def create_project_api_key(db, user_id: str, project_name: str):
+    raw_key = generate_raw_api_key()
+    record = ApiKey(
+        user_id=user_id,
+        project_name=(project_name or "Default").strip() or "Default",
+        key_prefix=raw_key[:14],
+        key_hash=_hash_api_key(raw_key),
+        is_active=True,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record, raw_key
+
+
+def list_user_api_keys(db, user_id: str):
+    return (
+        db.query(ApiKey)
+        .filter(ApiKey.user_id == user_id)
+        .order_by(ApiKey.created_at.desc())
+        .all()
+    )
+
+
+def revoke_api_key(db, key_id: int, user_id: str):
+    row = (
+        db.query(ApiKey)
+        .filter(ApiKey.id == key_id, ApiKey.user_id == user_id, ApiKey.is_active.is_(True))
+        .first()
+    )
+    if not row:
+        return None
+    row.is_active = False
+    row.revoked_at = datetime.utcnow()
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 def upsert_subscription(
