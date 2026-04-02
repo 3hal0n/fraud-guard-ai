@@ -43,7 +43,7 @@ $apiKey = "PASTE_GENERATED_KEY"
 $body = @{
   amount = 199.99
   merchant = "electronics"
-  location = "Austin"
+  location = "Austin"c 
   time = "2026-03-28 14:00"
 } | ConvertTo-Json
 

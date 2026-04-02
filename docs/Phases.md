@@ -121,3 +121,234 @@ Goal: Upgrade the app from a tool to a full SaaS platform.
 [ ] Bulk CSV Audit: Add a drag-and-drop zone where users can upload a CSV of 100 transactions, have FastAPI process them in a loop, and return the flagged rows.
 
 [ ] Senior README: Write a comprehensive README detailing the ML pipeline, the deterministic hash bridge, the SaaS architecture, and the database schema.
+### `backend/app/services/explainer.py`
+```python
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+import joblib
+import numpy as np
+import pandas as pd
+import shap
+
+# Must match training-time feature order exactly
+EXPECTED_FEATURES = ["Time", "Amount"] + [f"V{i}" for i in range(1, 29)]
+
+# Human-readable mapping for anonymized PCA features
+FEATURE_LABELS = {
+    "Time": "Unusual transaction timing",
+    "Amount": "Unusual transaction amount",
+    "V12": "Merchant/Location Inconsistency",
+    "V14": "Merchant/Location Inconsistency",
+    "V10": "Behavioral velocity anomaly",
+    "V17": "Behavioral velocity anomaly",
+    "V4": "Cardholder pattern deviation",
+    "V11": "Cardholder pattern deviation",
+}
+
+MODEL_PATH = Path("backend/app/models/fraud_model.pkl")
+
+
+@lru_cache(maxsize=1)
+def _load_model() -> Any:
+    model = joblib.load(MODEL_PATH)
+    return model
+
+
+@lru_cache(maxsize=1)
+def _get_explainer() -> shap.TreeExplainer:
+    model = _load_model()
+    return shap.TreeExplainer(model)
+
+
+def _normalize_input(input_df: pd.DataFrame) -> pd.DataFrame:
+    missing = [c for c in EXPECTED_FEATURES if c not in input_df.columns]
+    extra = [c for c in input_df.columns if c not in EXPECTED_FEATURES]
+    if missing or extra:
+        raise ValueError(
+            f"Feature mismatch. Missing={missing}, Extra={extra}. "
+            "Ensure training and inference feature names are identical."
+        )
+    return input_df[EXPECTED_FEATURES].copy()
+
+
+def get_prediction_explanation(input_df: pd.DataFrame) -> list[dict[str, float | str]]:
+    """
+    Returns top 3 SHAP contributors for a single transaction row.
+    Output: [{"feature": "Amount", "contribution": 0.45}, ...]
+    """
+    x = _normalize_input(input_df)
+    if len(x) != 1:
+        raise ValueError("get_prediction_explanation expects a single transaction row.")
+
+    explainer = _get_explainer()
+    shap_values = explainer.shap_values(x)
+
+    # Binary XGBoost can return ndarray or list depending on config/version
+    if isinstance(shap_values, list):
+        sv = np.array(shap_values[-1])[0]  # positive/fraud class
+    else:
+        sv = np.array(shap_values)[0]
+
+    ranked_idx = np.argsort(np.abs(sv))[::-1][:3]
+
+    factors: list[dict[str, float | str]] = []
+    for idx in ranked_idx:
+        col = EXPECTED_FEATURES[idx]
+        factors.append(
+            {
+                "feature": FEATURE_LABELS.get(col, f"Latent anomaly signal ({col})"),
+                "contribution": float(round(float(sv[idx]), 4)),  # signed for UI color
+            }
+        )
+
+    return factors
+```
+
+---
+
+### `backend/main.py` (update endpoint)
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import joblib
+import pandas as pd
+
+from app.services.explainer import EXPECTED_FEATURES, get_prediction_explanation
+
+app = FastAPI()
+model = joblib.load("backend/app/models/fraud_model.pkl")
+
+
+class TransactionInput(BaseModel):
+    Time: float
+    Amount: float
+    V1: float
+    V2: float
+    V3: float
+    V4: float
+    V5: float
+    V6: float
+    V7: float
+    V8: float
+    V9: float
+    V10: float
+    V11: float
+    V12: float
+    V13: float
+    V14: float
+    V15: float
+    V16: float
+    V17: float
+    V18: float
+    V19: float
+    V20: float
+    V21: float
+    V22: float
+    V23: float
+    V24: float
+    V25: float
+    V26: float
+    V27: float
+    V28: float
+
+
+@app.post("/api/v1/analyze")
+def analyze_transaction(payload: TransactionInput):
+    try:
+        row = payload.model_dump()
+        input_df = pd.DataFrame([row])[EXPECTED_FEATURES]  # strict feature order
+
+        proba = model.predict_proba(input_df)[0][1]
+        risk_score = round(float(proba * 100), 2)
+
+        risk_factors = get_prediction_explanation(input_df)
+
+        return {
+            "risk_score": risk_score,
+            "risk_factors": risk_factors,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+```
+
+---
+
+### `frontend/components/ScanResults.tsx`
+```tsx
+import React from "react";
+
+type RiskFactor = {
+  feature: string;
+  contribution: number; // signed SHAP value
+};
+
+type ScanResultsProps = {
+  riskScore: number; // 0-100
+  riskFactors: RiskFactor[];
+};
+
+const CORAL_RED = "#FF6B6B";
+const ELECTRIC_TEAL = "#2DE2E6";
+
+export default function ScanResults({ riskScore, riskFactors }: ScanResultsProps) {
+  const maxAbs =
+    Math.max(...riskFactors.map((f) => Math.abs(f.contribution)), 0.0001);
+
+  return (
+    <section className="mt-6 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+      {/* Existing risk dial remains above this component */}
+
+      <h3 className="text-sm font-semibold tracking-wide text-slate-200">
+        Why was this flagged?
+      </h3>
+
+      {riskScore < 20 ? (
+        <p className="mt-3 text-sm text-slate-400">
+          No significant risk factors detected.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-3">
+          {riskFactors.map((factor, i) => {
+            const isPositiveRisk = factor.contribution > 0;
+            const widthPct = Math.max(
+              8,
+              Math.round((Math.abs(factor.contribution) / maxAbs) * 100)
+            );
+
+            return (
+              <div key={`${factor.feature}-${i}`} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300">{factor.feature}</span>
+                  <span
+                    className="font-medium"
+                    style={{ color: isPositiveRisk ? CORAL_RED : ELECTRIC_TEAL }}
+                  >
+                    {factor.contribution > 0 ? "+" : ""}
+                    {factor.contribution.toFixed(3)}
+                  </span>
+                </div>
+
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${widthPct}%`,
+                      backgroundColor: isPositiveRisk ? CORAL_RED : ELECTRIC_TEAL,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+```
