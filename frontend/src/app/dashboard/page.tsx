@@ -6,6 +6,17 @@ import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { getUserInfo, getTransactions, getTelemetrySummary, UserInfo, TransactionRecord, TelemetrySummary } from "@/lib/api";
 import { motion } from "framer-motion";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Bar,
+  Line,
+  Legend,
+} from "recharts";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -36,7 +47,7 @@ export default function DashboardPage() {
   const usagePercentage = maxChecks > 0 ? Math.min((usedChecks / maxChecks) * 100, 100) : 0;
   const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  const { monthlyBars, lineMax, linePoints, totalVolume, blockedPercent, avgAmount } = useMemo(() => {
+  const { monthlyBars, lineMax, linePoints, totalVolume, blockedPercent, avgAmount, chartData } = useMemo(() => {
     const bars = new Array(12).fill(0);
     const sums = new Array(12).fill(0);
     const counts = new Array(12).fill(0);
@@ -68,6 +79,13 @@ export default function DashboardPage() {
       })
       .join(" ");
 
+    const chartData = monthLabels.map((m, i) => ({
+      month: m,
+      total: Math.round(bars[i] * 100) / 100,
+      avg: Math.round(avgPerMonth[i] * 100) / 100,
+      scans: counts[i],
+    }));
+
     return {
       monthlyBars: bars,
       lineMax: maxVal,
@@ -75,8 +93,10 @@ export default function DashboardPage() {
       totalVolume: total,
       blockedPercent: txCount ? Math.round((blocked / txCount) * 100) : 0,
       avgAmount: txCount ? total / txCount : 0,
+      chartData,
     };
   }, [recentTxns]);
+
 
   useEffect(() => {
     if (!user?.id) return;
@@ -200,53 +220,16 @@ export default function DashboardPage() {
             </div>
 
             <div className="relative z-10 h-64 w-full rounded-2xl border border-white/5 bg-[#0c0c0e] px-4 pt-6 pb-4">
-              <div className="pointer-events-none absolute inset-0 grid grid-rows-4">
-                {[0, 1, 2, 3].map((line) => (
-                  <div key={line} className="border-t border-white/5" />
-                ))}
-              </div>
-
-              <svg className="absolute inset-0 h-full w-full px-4 pt-6 pb-10" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <defs>
-                  <linearGradient id="dashLineGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#a5b4fc" stopOpacity="0.9" />
-                    <stop offset="100%" stopColor="#a5b4fc" stopOpacity="0.2" />
-                  </linearGradient>
-                </defs>
-
-                {monthlyBars.map((value, index) => {
-                  const barWidth = 100 / monthlyBars.length - 2.6;
-                  const x = index * (100 / monthlyBars.length) + 1.3;
-                  const height = (value / lineMax) * 100;
-                  return (
-                    <rect
-                      key={`bar-${monthLabels[index]}`}
-                      x={x}
-                      y={100 - height}
-                      width={barWidth}
-                      height={height}
-                      rx="0.9"
-                      fill="#6366f1"
-                      fillOpacity="0.82"
-                    />
-                  );
-                })}
-
-                <polyline
-                  points={linePoints}
-                  fill="none"
-                  stroke="url(#dashLineGradient)"
-                  strokeWidth="1.4"
-                />
-              </svg>
-
-              <div className="absolute bottom-2 left-4 right-4 grid grid-cols-12 text-[10px] text-slate-500">
-                {monthLabels.map((month) => (
-                  <span key={`label-${month}`} className="text-center">
-                    {month}
-                  </span>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 6, right: 16, left: 8, bottom: 8 }}>
+                  <CartesianGrid stroke="#0f1724" strokeDasharray="3 3" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} stroke="#94a3b8" />
+                  <YAxis axisLine={false} tickLine={false} stroke="#94a3b8" />
+                  <Tooltip formatter={(value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value))} />
+                  <Bar dataKey="total" fill="#6366f1" barSize={18} radius={[6,6,0,0]} />
+                  <Line type="monotone" dataKey="avg" stroke="#a5b4fc" strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           </motion.div>
         </div>
