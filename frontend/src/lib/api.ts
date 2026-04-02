@@ -18,6 +18,12 @@ export interface AnalyzeRequest {
 export interface AnalyzeResponse {
   risk_score: number;
   status: "risk" | "safe";
+  risk_factors: RiskFactor[];
+}
+
+export interface RiskFactor {
+  feature: string;
+  contribution: number;
 }
 
 interface AnalyzeRequestOptions {

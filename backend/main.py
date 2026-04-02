@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Form, Requ
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from predict import predict_fraud, load_models
+from app.services.explainer import build_prediction_input, get_prediction_explanation
 import uuid
 import os
 import csv
@@ -781,7 +782,25 @@ async def analyze(
             except Exception as persist_exc:
                 logger.warning("Failed to persist transaction: %s", persist_exc)
 
-        return {"risk_score": int(score), "is_fraud": is_fraud, "status": status, "db_available": db_ok}
+        risk_factors = []
+        try:
+            explanation_input = build_prediction_input(
+                amount=transaction.amount,
+                merchant=transaction.merchant,
+                location=transaction.location or "",
+                time_str=transaction.time or "",
+            )
+            risk_factors = get_prediction_explanation(explanation_input)
+        except Exception as explainer_exc:
+            logger.warning("Failed to compute prediction explanation: %s", explainer_exc)
+
+        return {
+            "risk_score": int(score),
+            "is_fraud": is_fraud,
+            "status": status,
+            "db_available": db_ok,
+            "risk_factors": risk_factors,
+        }
     except HTTPException:
         raise
     except Exception as e:

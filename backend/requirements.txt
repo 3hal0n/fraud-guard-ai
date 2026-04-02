@@ -12,3 +12,4 @@ alembic
 httpx
 python-multipart
 stripe
+shap
