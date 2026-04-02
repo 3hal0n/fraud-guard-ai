@@ -9,7 +9,7 @@ function SignUpContent() {
   const planParam = searchParams.get("plan");
 
   return (
-    <div className="min-h-screen bg-navy-950 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-navy-950 flex items-center justify-center px-4 pt-24 pb-10">
       <main className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
