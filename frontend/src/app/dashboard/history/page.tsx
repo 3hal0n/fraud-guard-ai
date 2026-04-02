@@ -2,10 +2,12 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 
 import AppLayout from "@/components/AppLayout";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { getTransactions, TransactionRecord } from "@/lib/api";
 import { motion } from "framer-motion";
+import HistoryFilter, { HistoryFilters } from "@/components/HistoryFilter";
+import Pagination from "@/components/Pagination";
 
 export default function HistoryPage() {
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
@@ -17,6 +19,10 @@ export default function HistoryPage() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showFilter, setShowFilter] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<HistoryFilters | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -26,8 +32,39 @@ export default function HistoryPage() {
       .finally(() => setLoading(false));
   }, [user?.id]);
 
-  const safeCount = transactions.filter((t) => t.status === "safe").length;
-  const riskCount = transactions.filter((t) => t.status === "risk").length;
+  const filteredTransactions = useMemo(() => {
+    if (!appliedFilters) return transactions;
+    return transactions.filter((t) => {
+      if (appliedFilters.status !== "all" && t.status !== appliedFilters.status) return false;
+      if (appliedFilters.minAmount != null && t.amount < (appliedFilters.minAmount || 0)) return false;
+      if (appliedFilters.maxAmount != null && t.amount > (appliedFilters.maxAmount || 0)) return false;
+      if (appliedFilters.startDate) {
+        const s = new Date(appliedFilters.startDate);
+        const ts = t.timestamp ? new Date(t.timestamp) : null;
+        if (!ts || ts < s) return false;
+      }
+      if (appliedFilters.endDate) {
+        const e = new Date(appliedFilters.endDate);
+        const ts = t.timestamp ? new Date(t.timestamp) : null;
+        if (!ts || ts > e) return false;
+      }
+      return true;
+    });
+  }, [transactions, appliedFilters]);
+
+  // reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [appliedFilters]);
+
+  const totalFiltered = filteredTransactions.length;
+  const displayedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTransactions.slice(start, start + pageSize);
+  }, [filteredTransactions, currentPage, pageSize]);
+
+  const safeCount = filteredTransactions.filter((t) => t.status === "safe").length;
+  const riskCount = filteredTransactions.filter((t) => t.status === "risk").length;
 
   return (
     <AppLayout>
@@ -39,7 +76,7 @@ export default function HistoryPage() {
             <h1 className="text-3xl font-medium text-white mb-2 tracking-tight">Ledger</h1>
             <p className="text-slate-400">Review all your past fraud detection scans.</p>
           </div>
-          <button className="px-5 py-2.5 bg-[#0A0A0A] hover:bg-[#121214] border border-white/10 text-white rounded-xl font-medium transition-all flex items-center gap-2 text-sm w-fit">
+          <button onClick={() => setShowFilter(true)} className="px-5 py-2.5 bg-[#0A0A0A] hover:bg-[#121214] border border-white/10 text-white rounded-xl font-medium transition-all flex items-center gap-2 text-sm w-fit">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
             Filter View
           </button>
@@ -47,9 +84,9 @@ export default function HistoryPage() {
 
         {/* Stats Strip */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[#0A0A0A] border border-white/5 rounded-[1.5rem] p-5">
+            <div className="bg-[#0A0A0A] border border-white/5 rounded-[1.5rem] p-5">
             <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Total Scans</p>
-            <p className="text-3xl font-light text-white">{loading ? "–" : transactions.length}</p>
+            <p className="text-3xl font-light text-white">{loading ? "–" : filteredTransactions.length}</p>
           </div>
           <div className="bg-[#0A0A0A] border border-white/5 rounded-[1.5rem] p-5">
             <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Safe</p>
@@ -89,7 +126,7 @@ export default function HistoryPage() {
                 ) : transactions.length === 0 ? (
                   <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">Ledger is empty.</td></tr>
                 ) : (
-                  transactions.map((txn) => {
+                  displayedTransactions.map((txn) => {
                     const riskPct = Math.round(txn.risk_score * 100);
                     return (
                       <tr key={txn.id} className="hover:bg-white/[0.02] transition-colors">
@@ -123,11 +160,26 @@ export default function HistoryPage() {
             </table>
           </div>
           {!loading && !error && transactions.length > 0 && (
-            <div className="border-t border-white/5 px-6 py-4 bg-[#121214]">
-              <p className="text-xs text-slate-500 tracking-wider uppercase">Showing {transactions.length} entries</p>
-            </div>
+            <>
+              <Pagination
+                totalItems={totalFiltered}
+                pageSize={pageSize}
+                currentPage={currentPage}
+                onPageChange={(p) => setCurrentPage(p)}
+              />
+
+              <div className="border-t border-white/5 px-6 py-4 bg-[#121214] flex items-center justify-between">
+                <p className="text-xs text-slate-500 tracking-wider uppercase">Showing {Math.min((currentPage-1)*pageSize+1, totalFiltered)} - {Math.min(currentPage*pageSize, totalFiltered)} of {totalFiltered} entries (filtered) — {transactions.length} total</p>
+              </div>
+            </>
           )}
         </motion.div>
+        <HistoryFilter
+          open={showFilter}
+          onClose={() => setShowFilter(false)}
+          onApply={(f) => { setAppliedFilters(f); setCurrentPage(1); }}
+          onClear={() => { setAppliedFilters(null); setCurrentPage(1); }}
+        />
       </div>
     </AppLayout>
   );

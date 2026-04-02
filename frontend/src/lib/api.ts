@@ -17,7 +17,13 @@ export interface AnalyzeRequest {
 
 export interface AnalyzeResponse {
   risk_score: number;
-  status: "risk" | "safe";
+  status: "APPROVED" | "PENDING_REVIEW" | "BLOCK_TRANSACTION";
+  risk_factors: RiskFactor[];
+}
+
+export interface RiskFactor {
+  feature: string;
+  contribution: number;
 }
 
 interface AnalyzeRequestOptions {

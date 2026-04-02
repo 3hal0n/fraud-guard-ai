@@ -8,7 +8,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { analyzeTransaction, ApiError } from "@/lib/api";
+import type { RiskFactor } from "@/lib/api";
 import { motion } from "framer-motion";
+import ScanResults from "@/components/ScanResults";
 
 // Zod schema & Helpers remain identical
 const analyzeSchema = z.object({
@@ -47,7 +49,7 @@ export default function AnalyzePage() {
     user = u?.user ?? null;
   }
   const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<{ riskScore: number; status: "safe" | "risk"; elapsed?: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{ riskScore: number; status: "APPROVED" | "PENDING_REVIEW" | "BLOCK_TRANSACTION"; elapsed?: number; riskFactors: RiskFactor[] } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [submittedFormData, setSubmittedFormData] = useState<AnalyzeFormData | null>(null);
 
@@ -62,7 +64,7 @@ export default function AnalyzePage() {
       const result = await analyzeTransaction({ amount: data.amount, merchant: data.category, category: data.category, location: data.location, time: data.time, user_id: user?.id });
       const elapsed = Math.round(performance.now() - t0);
       const normalizedRiskScore = result.risk_score <= 1 ? Math.round(result.risk_score * 100) : Math.round(result.risk_score);
-      setScanResult({ riskScore: normalizedRiskScore, status: result.status, elapsed });
+      setScanResult({ riskScore: normalizedRiskScore, status: result.status, elapsed, riskFactors: result.risk_factors ?? [] });
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       if (apiErr.status === 402) setApiError("Daily limit reached. Upgrade to Pro for unlimited scans.");
@@ -74,8 +76,8 @@ export default function AnalyzePage() {
 
   const handleScanAnother = () => { setScanResult(null); setApiError(null); setSubmittedFormData(null); reset(); };
 
-  const isFraud = scanResult ? scanResult.riskScore >= 75 : false;
-  const fraudIndicators = isFraud && submittedFormData ? generateFraudIndicators(submittedFormData, scanResult!.riskScore) : [];
+  const isBlocked = scanResult ? scanResult.status === "BLOCK_TRANSACTION" : false;
+  const fraudIndicators = isBlocked && submittedFormData ? generateFraudIndicators(submittedFormData, scanResult!.riskScore) : [];
 
   return (
     <AppLayout>
@@ -89,7 +91,7 @@ export default function AnalyzePage() {
         <div className="grid lg:grid-cols-12 gap-8">
           
           {/* Input Form */}
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-5 bg-[#0A0A0A] border border-white/5 rounded-[2rem] p-8 h-fit">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-5 bg-[#0A0A0A] border border-white/5 rounded-4xl p-8 h-fit">
             <h2 className="text-lg font-medium text-white mb-6">Payload Parameters</h2>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
@@ -131,7 +133,7 @@ export default function AnalyzePage() {
               <div>
                 <label className="block text-xs font-semibold tracking-wider uppercase text-slate-500 mb-2">Time</label>
                 <input type="datetime-local" {...register("time")}
-                  className={`w-full px-4 py-3 bg-[#121214] border rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all [color-scheme:dark] ${errors.time ? "border-red-500/50" : "border-white/5 hover:border-white/10"}`}
+                  className={`w-full px-4 py-3 bg-[#121214] border rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all scheme-dark ${errors.time ? "border-red-500/50" : "border-white/5 hover:border-white/10"}`}
                 />
                 {errors.time && <p className="mt-2 text-xs text-red-400">{errors.time.message}</p>}
               </div>
@@ -143,7 +145,7 @@ export default function AnalyzePage() {
           </motion.div>
 
           {/* Results Panel */}
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-7 bg-[#0A0A0A] border border-white/5 rounded-[2rem] p-8 flex flex-col relative overflow-hidden min-h-[500px]">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-7 bg-[#0A0A0A] border border-white/5 rounded-4xl p-8 flex flex-col relative overflow-hidden min-h-125">
             
             {/* Idle State */}
             {!scanResult && !isScanning && !apiError && (
@@ -170,7 +172,7 @@ export default function AnalyzePage() {
             {/* Error State */}
             {apiError && (
               <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-2xl flex gap-4">
-                <svg className="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <svg className="w-6 h-6 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                 <div>
                   <h3 className="text-red-500 font-medium mb-1">Analysis Failed</h3>
                   <p className="text-sm text-slate-400">{apiError}</p>
@@ -180,66 +182,14 @@ export default function AnalyzePage() {
 
             {/* Success Results State */}
             {scanResult && !isScanning && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full z-10">
-                <div className="flex justify-between items-start mb-10">
-                  <div>
-                    <h3 className="text-lg font-medium text-white mb-1">Analysis Complete</h3>
-                    <p className="text-sm text-slate-500 font-mono">T+ {scanResult.elapsed ?? "—"}ms</p>
-                  </div>
-                  <div className={`px-4 py-1.5 rounded-full border text-xs font-bold tracking-widest uppercase ${isFraud ? "bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)]" : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.2)]"}`}>
-                    {isFraud ? "Blocked" : "Approved"}
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-8 mb-10">
-                  {/* Gauge */}
-                  <div className="relative w-40 h-40 mx-auto sm:mx-0 flex-shrink-0">
-                    <svg className="w-full h-full transform -rotate-90 drop-shadow-2xl">
-                      <circle cx="80" cy="80" r="70" stroke="#121214" strokeWidth="8" fill="none" />
-                      <circle cx="80" cy="80" r="70" stroke={isFraud ? "#ef4444" : "#22d3ee"} strokeWidth="8" fill="none" strokeDasharray={`${(scanResult.riskScore / 100) * 440} 440`} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className={`text-4xl font-light ${isFraud ? "text-red-500" : "text-cyan-400"}`}>{scanResult.riskScore}</span>
-                      <span className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Risk</span>
-                    </div>
-                  </div>
-
-                  {/* Metadata */}
-                  <div className="flex-1 space-y-4 justify-center flex flex-col">
-                     <div className="p-4 bg-[#121214] rounded-xl border border-white/5">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs text-slate-500 uppercase tracking-wider">Confidence Score</span>
-                          <span className="text-sm font-medium text-white">99.8%</span>
-                        </div>
-                        <div className="w-full h-1 bg-black rounded-full overflow-hidden mt-2"><div className="w-[99.8%] h-full bg-white/40"/></div>
-                     </div>
-                     <div className="p-4 bg-[#121214] rounded-xl border border-white/5 flex justify-between items-center">
-                        <span className="text-xs text-slate-500 uppercase tracking-wider">Engine Protocol</span>
-                        <span className="text-sm font-medium text-white">v2.1 Fast-Track</span>
-                     </div>
-                  </div>
-                </div>
-
-                {isFraud && fraudIndicators.length > 0 && (
-                  <div className="mb-auto">
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Detected Anomalies</h4>
-                    <div className="grid gap-2">
-                      {fraudIndicators.map((indicator, i) => (
-                        <div key={i} className="flex items-center gap-3 p-3 bg-red-500/5 border border-red-500/10 rounded-xl">
-                           <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                           <span className="text-sm text-red-200">{indicator}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-8 pt-6 border-t border-white/5">
-                  <button onClick={handleScanAnother} className="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl text-sm font-medium transition-all active:scale-95">
-                    Clear & Scan Another
-                  </button>
-                </div>
-              </motion.div>
+                <ScanResults
+                  riskScore={scanResult.riskScore}
+                  elapsed={scanResult.elapsed}
+                  status={scanResult.status}
+                  riskFactors={scanResult.riskFactors}
+                  fraudIndicators={fraudIndicators}
+                  onClear={handleScanAnother}
+                />
             )}
           </motion.div>
 

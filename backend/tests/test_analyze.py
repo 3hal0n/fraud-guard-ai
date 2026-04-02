@@ -18,7 +18,7 @@ def test_analyze_no_user():
     body = resp.json()
     assert "risk_score" in body
     assert "status" in body
-    assert body["status"] in ("risk", "safe")
+    assert body["status"] in ("APPROVED", "PENDING_REVIEW", "BLOCK_TRANSACTION")
 
 
 def test_analyze_high_amount():
@@ -31,7 +31,7 @@ def test_analyze_high_amount():
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["risk_score"] > 50
-    assert body["status"] == "risk"
+    assert body["status"] == "BLOCK_TRANSACTION"
 
 
 def test_clerk_webhook_creates_user():
@@ -231,7 +231,7 @@ def test_bulk_csv_requires_pro_and_returns_rows():
     assert pro_resp.status_code == 200, pro_resp.text
     body = pro_resp.json()
     assert body["processed_rows"] == 2
-    assert any(row["status"] == "risk" for row in body["flagged_rows"])
+    assert any(row["status"] == "BLOCK_TRANSACTION" for row in body["flagged_rows"])
 
 
 def test_create_checkout_session_returns_url(monkeypatch):
