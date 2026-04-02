@@ -109,11 +109,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* --- MOBILE NAVBAR (Hidden on lg screens) --- */}
       <header className="lg:hidden sticky top-0 z-50 bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-white/5 px-4 py-4 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-            <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
+          <img src="/favicon.ico" alt="FraudGuard" className="w-8 h-8 object-contain rounded" />
           <span className="font-medium text-white tracking-tight">FraudGuard</span>
         </Link>
         <div className="flex items-center gap-4">
@@ -158,11 +154,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <aside className="hidden lg:flex w-72 bg-black border-r border-white/5 flex-col z-20 h-screen sticky top-0">
         <div className="p-6 border-b border-white/5">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all">
-              <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
+            <img src="/favicon.ico" alt="FraudGuard AI" className="w-8 h-8 object-contain rounded shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all" />
             <span className="text-lg font-medium text-white tracking-tight">FraudGuard <span className="text-cyan-400">AI</span></span>
           </Link>
         </div>
