@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { getTransactions, TransactionRecord } from "@/lib/api";
 import { motion } from "framer-motion";
 import HistoryFilter, { HistoryFilters } from "@/components/HistoryFilter";
+import Pagination from "@/components/Pagination";
 
 export default function HistoryPage() {
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
@@ -20,6 +21,8 @@ export default function HistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<HistoryFilters | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -48,6 +51,18 @@ export default function HistoryPage() {
       return true;
     });
   }, [transactions, appliedFilters]);
+
+  // reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [appliedFilters]);
+
+  const totalFiltered = filteredTransactions.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const displayedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTransactions.slice(start, start + pageSize);
+  }, [filteredTransactions, currentPage, pageSize]);
 
   const safeCount = filteredTransactions.filter((t) => t.status === "safe").length;
   const riskCount = filteredTransactions.filter((t) => t.status === "risk").length;
@@ -112,7 +127,7 @@ export default function HistoryPage() {
                 ) : transactions.length === 0 ? (
                   <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">Ledger is empty.</td></tr>
                 ) : (
-                  filteredTransactions.map((txn) => {
+                  displayedTransactions.map((txn) => {
                     const riskPct = Math.round(txn.risk_score * 100);
                     return (
                       <tr key={txn.id} className="hover:bg-white/[0.02] transition-colors">
@@ -146,16 +161,25 @@ export default function HistoryPage() {
             </table>
           </div>
           {!loading && !error && transactions.length > 0 && (
-            <div className="border-t border-white/5 px-6 py-4 bg-[#121214] flex items-center justify-between">
-              <p className="text-xs text-slate-500 tracking-wider uppercase">Showing {filteredTransactions.length} of {transactions.length} entries</p>
-            </div>
+            <>
+              <Pagination
+                totalItems={totalFiltered}
+                pageSize={pageSize}
+                currentPage={currentPage}
+                onPageChange={(p) => setCurrentPage(p)}
+              />
+
+              <div className="border-t border-white/5 px-6 py-4 bg-[#121214] flex items-center justify-between">
+                <p className="text-xs text-slate-500 tracking-wider uppercase">Showing {Math.min((currentPage-1)*pageSize+1, totalFiltered)} - {Math.min(currentPage*pageSize, totalFiltered)} of {totalFiltered} entries (filtered) — {transactions.length} total</p>
+              </div>
+            </>
           )}
         </motion.div>
         <HistoryFilter
           open={showFilter}
           onClose={() => setShowFilter(false)}
-          onApply={(f) => setAppliedFilters(f)}
-          onClear={() => setAppliedFilters(null)}
+          onApply={(f) => { setAppliedFilters(f); setCurrentPage(1); }}
+          onClear={() => { setAppliedFilters(null); setCurrentPage(1); }}
         />
       </div>
     </AppLayout>
