@@ -58,7 +58,6 @@ export default function HistoryPage() {
   }, [appliedFilters]);
 
   const totalFiltered = filteredTransactions.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
   const displayedTransactions = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredTransactions.slice(start, start + pageSize);

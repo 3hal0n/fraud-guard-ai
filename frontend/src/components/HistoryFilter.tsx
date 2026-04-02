@@ -57,7 +57,7 @@ export default function HistoryFilter({
         <h3 className="text-lg font-medium text-white mb-3">Filter Transactions</h3>
         <div className="space-y-3">
           <label className="block text-sm text-slate-400">Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="w-full bg-[#070707] border border-white/5 rounded px-3 py-2 text-white">
+          <select value={status} onChange={(e) => setStatus(e.target.value as HistoryFilters["status"])} className="w-full bg-[#070707] border border-white/5 rounded px-3 py-2 text-white">
             <option value="all">All</option>
             <option value="safe">Safe</option>
             <option value="risk">High Risk</option>

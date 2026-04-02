@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
@@ -109,7 +110,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* --- MOBILE NAVBAR (Hidden on lg screens) --- */}
       <header className="lg:hidden sticky top-0 z-50 bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-white/5 px-4 py-4 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <img src="/favicon.ico" alt="FraudGuard" className="w-8 h-8 object-contain rounded" />
+          <Image src="/favicon.ico" alt="FraudGuard" width={32} height={32} className="object-contain rounded" />
           <span className="font-medium text-white tracking-tight">FraudGuard</span>
         </Link>
         <div className="flex items-center gap-4">
@@ -154,7 +155,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <aside className="hidden lg:flex w-72 bg-black border-r border-white/5 flex-col z-20 h-screen sticky top-0">
         <div className="p-6 border-b border-white/5">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <img src="/favicon.ico" alt="FraudGuard AI" className="w-8 h-8 object-contain rounded shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all" />
+            <Image src="/favicon.ico" alt="FraudGuard AI" width={32} height={32} className="rounded shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all" />
             <span className="text-lg font-medium text-white tracking-tight">FraudGuard <span className="text-cyan-400">AI</span></span>
           </Link>
         </div>

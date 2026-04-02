@@ -91,11 +91,6 @@ export default function LandingPage() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="mb-8"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-slate-300 text-xs sm:text-sm">
-              <span className="text-cyan-400">Risk Analysis 2.0</span>
-              <span className="w-1 h-1 rounded-full bg-white/30" />
-              <span>Now Available</span>
-            </div>
           </motion.div>
 
           {/* Headline */}
@@ -123,6 +118,7 @@ export default function LandingPage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
             className="flex items-center gap-4 mb-10"
           >
+            {/* eslint-disable @next/next/no-img-element */}
             <div className="flex -space-x-3">
               {[
                 "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=96&q=80&auto=format&fit=crop",
@@ -130,15 +126,10 @@ export default function LandingPage() {
                 "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=96&q=80&auto=format&fit=crop",
                 "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=96&q=80&auto=format&fit=crop",
               ].map((src, i) => (
-                <img
-                  key={src}
-                  src={src}
-                  alt={`Team member ${i + 1}`}
-                  className="w-8 h-8 rounded-full border-2 border-black object-cover"
-                  loading="lazy"
-                />
+                <img key={src} src={src} alt={`Team member ${i + 1}`} className="w-8 h-8 rounded-full border-2 border-black object-cover" loading="lazy" />
               ))}
             </div>
+            {/* eslint-enable @next/next/no-img-element */}
             <span className="text-sm text-slate-400">Trusted already by <span className="text-white font-medium">1.2k+</span> teams</span>
           </motion.div>
 
