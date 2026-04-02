@@ -57,7 +57,7 @@ export default function ScanResults({
               cx="80"
               cy="80"
               r="70"
-              stroke={isFraud ? "#ef4444" : "#22d3ee"}
+              stroke={isBlocked ? "#ef4444" : status === "APPROVED" ? "#22d3ee" : "#f59e0b"}
               strokeWidth="8"
               fill="none"
               strokeDasharray={`${(riskScore / 100) * 440} 440`}
@@ -66,7 +66,7 @@ export default function ScanResults({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`text-4xl font-light ${isFraud ? "text-red-500" : "text-cyan-400"}`}>{riskScore}</span>
+            <span className={`text-4xl font-light ${isBlocked ? "text-red-500" : status === "APPROVED" ? "text-cyan-400" : "text-amber-400"}`}>{riskScore}</span>
             <span className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Risk</span>
           </div>
         </div>

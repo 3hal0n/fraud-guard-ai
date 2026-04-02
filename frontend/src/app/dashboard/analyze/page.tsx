@@ -49,7 +49,7 @@ export default function AnalyzePage() {
     user = u?.user ?? null;
   }
   const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<{ riskScore: number; status: "safe" | "risk"; elapsed?: number; riskFactors: RiskFactor[] } | null>(null);
+  const [scanResult, setScanResult] = useState<{ riskScore: number; status: "APPROVED" | "PENDING_REVIEW" | "BLOCK_TRANSACTION"; elapsed?: number; riskFactors: RiskFactor[] } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [submittedFormData, setSubmittedFormData] = useState<AnalyzeFormData | null>(null);
 
