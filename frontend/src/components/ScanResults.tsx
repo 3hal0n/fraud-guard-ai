@@ -6,7 +6,7 @@ import type { RiskFactor } from "@/lib/api";
 type ScanResultsProps = {
   riskScore: number;
   elapsed?: number;
-  isFraud: boolean;
+  status: "APPROVED" | "PENDING_REVIEW" | "BLOCK_TRANSACTION";
   riskFactors: RiskFactor[];
   fraudIndicators: string[];
   onClear: () => void;
@@ -20,12 +20,14 @@ function formatContribution(value: number): string {
 export default function ScanResults({
   riskScore,
   elapsed,
-  isFraud,
+  status,
   riskFactors,
   fraudIndicators,
   onClear,
 }: ScanResultsProps) {
   const maxMagnitude = Math.max(1, ...riskFactors.map((factor) => Math.abs(factor.contribution)));
+  const displayLabel = status === "PENDING_REVIEW" ? "PENDING REVIEW" : status.replaceAll("_", " ");
+  const isBlocked = status === "BLOCK_TRANSACTION";
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full z-10">
@@ -36,12 +38,14 @@ export default function ScanResults({
         </div>
         <div
           className={`px-4 py-1.5 rounded-full border text-xs font-bold tracking-widest uppercase ${
-            isFraud
+            isBlocked
               ? "bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)]"
-              : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+              : status === "APPROVED"
+              ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+              : "bg-amber-500/10 border-amber-400/30 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.18)]"
           }`}
         >
-          {isFraud ? "Blocked" : "Approved"}
+          {displayLabel}
         </div>
       </div>
 

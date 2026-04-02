@@ -769,7 +769,13 @@ async def analyze(
             location=transaction.location or "",
             time_str=transaction.time or "",
         )
-        status = "risk" if is_fraud else "safe"
+        # Map numeric score -> human status for the UI and policy enforcement
+        if score < 30:
+            status = "APPROVED"
+        elif 30 <= score <= 70:
+            status = "PENDING_REVIEW"
+        else:
+            status = "BLOCK_TRANSACTION"
 
         # ── Persist (best-effort; failure must not mask the result) ─────────
         if db_ok:
@@ -790,7 +796,7 @@ async def analyze(
                 location=transaction.location or "",
                 time_str=transaction.time or "",
             )
-            risk_factors = get_prediction_explanation(explanation_input)
+            risk_factors = get_prediction_explanation(explanation_input, risk_score=score)
         except Exception as explainer_exc:
             logger.warning("Failed to compute prediction explanation: %s", explainer_exc)
 
@@ -869,7 +875,13 @@ async def analyze_bulk_csv(user_id: str = Form(...), file: UploadFile = File(...
                     location=location,
                     time_str=time_str,
                 )
-                status = "risk" if is_fraud else "safe"
+                # Map numeric score -> human status
+                if score < 30:
+                    status = "APPROVED"
+                elif 30 <= score <= 70:
+                    status = "PENDING_REVIEW"
+                else:
+                    status = "BLOCK_TRANSACTION"
                 processed += 1
 
                 tx_id = str(uuid.uuid4())
@@ -879,7 +891,9 @@ async def analyze_bulk_csv(user_id: str = Form(...), file: UploadFile = File(...
                     logger.warning("Bulk persist failed for row %s: %s", idx, persist_exc)
 
                 normalized_score = int(score)
-                if status == "risk":
+                # Keep behavior: return flagged rows for transactions that the
+                # model considers fraudulent (is_fraud True)
+                if is_fraud:
                     flagged_rows.append(
                         {
                             "row_number": idx,

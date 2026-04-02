@@ -102,7 +102,7 @@ def _extract_shap_row(input_df: pd.DataFrame) -> np.ndarray:
     return shap_array[0]
 
 
-def get_prediction_explanation(input_df: pd.DataFrame) -> list[dict[str, Any]]:
+def get_prediction_explanation(input_df: pd.DataFrame, risk_score: float | None = None) -> list[dict[str, Any]]:
     if not isinstance(input_df, pd.DataFrame):
         input_df = pd.DataFrame(input_df)
 
@@ -112,9 +112,15 @@ def get_prediction_explanation(input_df: pd.DataFrame) -> list[dict[str, Any]]:
 
     ordered_df = input_df.loc[:, predict.FEATURE_COLUMNS].head(1).copy()
     shap_row = _extract_shap_row(ordered_df)
+    # If the model indicates a high-risk transaction, surface only the
+    # positive SHAP contributions (those that *increase* risk). Otherwise
+    # keep signed contributions so the UI can show risk-reducing factors.
+    contributions = np.asarray(shap_row, dtype=float)
+    if risk_score is not None and float(risk_score) > 50:
+        contributions = np.maximum(0.0, contributions)
 
     grouped = OrderedDict()
-    for feature_name, contribution in zip(predict.FEATURE_COLUMNS, shap_row):
+    for feature_name, contribution in zip(predict.FEATURE_COLUMNS, contributions):
         label = _resolve_feature_label(feature_name)
         grouped[label] = grouped.get(label, 0.0) + float(contribution)
 

@@ -76,8 +76,8 @@ export default function AnalyzePage() {
 
   const handleScanAnother = () => { setScanResult(null); setApiError(null); setSubmittedFormData(null); reset(); };
 
-  const isFraud = scanResult ? scanResult.riskScore >= 75 : false;
-  const fraudIndicators = isFraud && submittedFormData ? generateFraudIndicators(submittedFormData, scanResult!.riskScore) : [];
+  const isBlocked = scanResult ? scanResult.status === "BLOCK_TRANSACTION" : false;
+  const fraudIndicators = isBlocked && submittedFormData ? generateFraudIndicators(submittedFormData, scanResult!.riskScore) : [];
 
   return (
     <AppLayout>
@@ -182,14 +182,14 @@ export default function AnalyzePage() {
 
             {/* Success Results State */}
             {scanResult && !isScanning && (
-              <ScanResults
-                riskScore={scanResult.riskScore}
-                elapsed={scanResult.elapsed}
-                isFraud={isFraud}
-                riskFactors={scanResult.riskFactors}
-                fraudIndicators={fraudIndicators}
-                onClear={handleScanAnother}
-              />
+                <ScanResults
+                  riskScore={scanResult.riskScore}
+                  elapsed={scanResult.elapsed}
+                  status={scanResult.status}
+                  riskFactors={scanResult.riskFactors}
+                  fraudIndicators={fraudIndicators}
+                  onClear={handleScanAnother}
+                />
             )}
           </motion.div>
 
