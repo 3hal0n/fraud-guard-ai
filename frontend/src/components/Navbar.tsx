@@ -17,7 +17,7 @@ export default function Navbar() {
     <header className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 w-full flex justify-center pointer-events-none">
       <div className="pointer-events-auto flex items-center gap-4 px-3 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full shadow-lg max-w-4xl w-full mx-4">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/favicon.ico" alt="FraudGuard" width={28} height={28} className="rounded-md flex-shrink-0" />
+          <Image src="/logo.svg" alt="FraudGuard" width={28} height={28} className="rounded-md flex-shrink-0" />
           <span className="text-white font-semibold tracking-wide text-sm md:text-base hidden sm:inline">FraudGuard AI</span>
         </Link>
 

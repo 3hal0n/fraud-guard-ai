@@ -47,52 +47,57 @@ export default function DashboardPage() {
   const usagePercentage = maxChecks > 0 ? Math.min((usedChecks / maxChecks) * 100, 100) : 0;
   const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  const { monthlyBars, lineMax, linePoints, totalVolume, blockedPercent, avgAmount, chartData } = useMemo(() => {
+  const formatUSD = (value: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+
+  const { totalVolume, blockedPercent, avgAmount, blockedVolumeYtd, chartData } = useMemo(() => {
     const bars = new Array(12).fill(0);
+    const safeBars = new Array(12).fill(0);
+    const blockedBars = new Array(12).fill(0);
     const sums = new Array(12).fill(0);
     const counts = new Array(12).fill(0);
     let total = 0;
     let blocked = 0;
+    let blockedAmountYtd = 0;
     let txCount = 0;
+    const currentYear = new Date().getFullYear();
 
     recentTxns.forEach((t) => {
       if (!t.timestamp) return;
       const d = new Date(t.timestamp);
       if (Number.isNaN(d.getTime())) return;
       const m = d.getMonth();
-      bars[m] += Number(t.amount || 0);
-      sums[m] += Number(t.amount || 0);
+      const amount = Number(t.amount || 0);
+      bars[m] += amount;
+      sums[m] += amount;
       counts[m] += 1;
-      total += Number(t.amount || 0);
-      if (t.status === "risk") blocked += 1;
+      total += amount;
+      if (t.status === "risk") {
+        blocked += 1;
+        blockedBars[m] += amount;
+        if (d.getFullYear() === currentYear) blockedAmountYtd += amount;
+      } else {
+        safeBars[m] += amount;
+      }
       txCount += 1;
     });
 
     const avgPerMonth = sums.map((s, i) => (counts[i] ? s / counts[i] : 0));
-    const maxVal = Math.max(70, ...bars, ...avgPerMonth);
-
-    const points = avgPerMonth
-      .map((value, index) => {
-        const x = (index / (avgPerMonth.length - 1)) * 100;
-        const y = 100 - (value / maxVal) * 100;
-        return `${x},${y}`;
-      })
-      .join(" ");
 
     const chartData = monthLabels.map((m, i) => ({
       month: m,
       total: Math.round(bars[i] * 100) / 100,
+      safe: Math.round(safeBars[i] * 100) / 100,
+      blocked: Math.round(blockedBars[i] * 100) / 100,
       avg: Math.round(avgPerMonth[i] * 100) / 100,
       scans: counts[i],
     }));
 
     return {
-      monthlyBars: bars,
-      lineMax: maxVal,
-      linePoints: points,
       totalVolume: total,
       blockedPercent: txCount ? Math.round((blocked / txCount) * 100) : 0,
       avgAmount: txCount ? total / txCount : 0,
+      blockedVolumeYtd: blockedAmountYtd,
       chartData,
     };
   }, [recentTxns]);
@@ -123,6 +128,21 @@ export default function DashboardPage() {
             {greeting}, <span className="text-cyan-400">{user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "there"}</span>.
           </h1>
           <p className="text-sm sm:text-base text-slate-400">Monitor your fraud detection activity and insights.</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-r from-[#072026] via-[#071418] to-[#14090c] p-6 sm:p-8 shadow-[0_20px_60px_rgba(6,182,212,0.2)]"
+        >
+          <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute -left-20 -bottom-20 h-56 w-56 rounded-full bg-red-500/10 blur-3xl pointer-events-none" />
+          <p className="relative z-10 text-xs uppercase tracking-[0.2em] text-cyan-300/80">Fraud Prevented (YTD)</p>
+          <p className="relative z-10 mt-3 text-4xl sm:text-5xl font-semibold text-white tracking-tight">
+            {loadingInfo ? "—" : formatUSD(blockedVolumeYtd)}
+          </p>
+          <p className="relative z-10 mt-2 text-sm text-slate-300/80">Estimated value of high-risk transactions stopped this year.</p>
         </motion.div>
 
         {/* Top Row: Usage & Charts */}
@@ -225,9 +245,11 @@ export default function DashboardPage() {
                   <CartesianGrid stroke="#0f1724" strokeDasharray="3 3" />
                   <XAxis dataKey="month" axisLine={false} tickLine={false} stroke="#94a3b8" />
                   <YAxis axisLine={false} tickLine={false} stroke="#94a3b8" />
-                  <Tooltip formatter={(value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value))} />
-                  <Bar dataKey="total" fill="#6366f1" barSize={18} radius={[6,6,0,0]} />
-                  <Line type="monotone" dataKey="avg" stroke="#a5b4fc" strokeWidth={2} dot={false} />
+                  <Tooltip formatter={(value: number) => formatUSD(Number(value))} />
+                  <Legend />
+                  <Bar dataKey="safe" name="Total Volume" stackId="volume" fill="#06b6d4" barSize={18} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="blocked" name="Blocked Volume" stackId="volume" fill="#ef4444" barSize={18} radius={[6, 6, 0, 0]} />
+                  <Line type="monotone" dataKey="avg" name="Avg Amount" stroke="#67e8f9" strokeWidth={2} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
