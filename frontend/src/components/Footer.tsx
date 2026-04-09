@@ -9,13 +9,15 @@ export default function Footer() {
   if (pathname?.startsWith("/dashboard")) return null;
   const currentYear = new Date().getFullYear();
 
-  const productLinks = ["Features", "Pricing", "API Docs", "Dashboard"];
-  const companyLinks = ["About", "Blog", "Careers", "Contact"];
+  const productLinks = [
+    { label: "Pricing", href: "/pricing" },
+    { label: "API Docs", href: "/api-docs" },
+    { label: "Dashboard", href: "/dashboard" },
+  ];
   const legalLinks = [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
-    { label: "Security", href: "#" },
-    { label: "Status", href: "#" },
+    { label: "Status", href: "/status" },
   ];
 
   return (
@@ -69,39 +71,19 @@ export default function Footer() {
               </h4>
               <ul className="space-y-3 sm:space-y-4">
                 {productLinks.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="group flex items-center text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95"
-                    >
+                  <li key={item.label}>
+                    <Link href={item.href} className="group flex items-center text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95">
                       <span className="relative">
-                        {item}
+                        {item.label}
                         <span className="absolute -bottom-1 left-0 w-0 h-px bg-teal-400 transition-all group-hover:w-full" />
                       </span>
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Column 2: Company */}
-            <div className="space-y-4 sm:space-y-6">
-              <h4 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
-                Company
-              </h4>
-              <ul className="space-y-3 sm:space-y-4">
-                {companyLinks.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95"
-                    >
-                      {item}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            
 
             {/* Column 3: Legal */}
             <div className="space-y-4 sm:space-y-6">
