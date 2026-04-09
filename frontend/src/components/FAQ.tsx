@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const faqs = [
   {
-    q: "How does the < 85ms latency work?",
-    a: "Our XGBoost inference engine is optimized in C++ and deployed on edge nodes globally. When you ping our API, the request is routed to the nearest geographic cluster, ensuring near-zero friction in your checkout flow."
+    q: "How does the sub-85ms latency work?",
+    a: "We operate a low-latency, edge-deployed model serving stack. Requests are routed to the nearest regional cluster and served by optimized inference runtimes and model optimizations (for example: quantization, efficient batching, and tuned I/O paths) to minimize end-to-end processing. In typical conditions for nearby regions, end-to-end inference is commonly under 85ms."
   },
   {
     q: "What happens if the FraudGuard API goes down?",
