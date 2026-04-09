@@ -198,7 +198,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         <div className="p-4 border-t border-white/5">
           <div className="flex items-center justify-between p-3 rounded-xl bg-[#0A0A0A] border border-white/5 hover:border-white/10 transition-colors overflow-visible">
-            <div className="flex items-center gap-3 overflow-hidden">
+            <div className="flex items-center gap-3 overflow-visible">
               {clerkEnabled ? (
                 <>
                   <div className="relative">
