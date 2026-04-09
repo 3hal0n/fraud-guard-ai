@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  TooltipProps,
   CartesianGrid,
   Area,
   Line,
@@ -56,18 +57,19 @@ export default function DashboardPage() {
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
   // Custom glassmorphic tooltip for the charts
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  type ChartTooltipEntry = { color?: string; name?: string; value?: number };
+  const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-[#0A0A0C]/90 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
           <p className="text-white font-medium mb-3 border-b border-white/10 pb-2">{label} 2026</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry: ChartTooltipEntry, index: number) => (
             <div key={index} className="flex items-center justify-between gap-6 text-sm mb-1.5">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: entry.color, boxShadow: `0 0 8px ${entry.color}` }} />
                 <span className="text-slate-400 capitalize">{entry.name}:</span>
               </div>
-              <span className="text-white font-mono font-medium">{formatUSD(entry.value)}</span>
+              <span className="text-white font-mono font-medium">{formatUSD(entry.value ?? 0)}</span>
             </div>
           ))}
         </div>
