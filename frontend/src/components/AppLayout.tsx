@@ -42,6 +42,16 @@ const baseNavItems = [
     ),
   },
   {
+    name: "Global Threat Map",
+    href: "/dashboard/map",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 11.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+      </svg>
+    ),
+  },
+  {
     name: "Billing",
     href: "/dashboard/billing",
     icon: (
