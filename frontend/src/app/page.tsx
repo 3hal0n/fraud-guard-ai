@@ -4,6 +4,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import SocialProof from "@/components/SocialProof";
 import HowItWorks from "@/components/HowItWorks";
+import Integrations from "@/components/Integrations";
+import FAQ from "@/components/FAQ";
+import FinalCTA from "@/components/FinalCTA";
 
 type CardData = {
   title: string;
@@ -418,6 +421,19 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* --- INTEGRATIONS --- */}
+      <div id="integrations">
+        <Integrations />
+      </div>
+
+      {/* --- FAQ --- */}
+      <FAQ />
+
+      {/* --- FINAL CTA --- */}
+      <div id="final-cta">
+        <FinalCTA />
+      </div>
     </div>
   );
 }
