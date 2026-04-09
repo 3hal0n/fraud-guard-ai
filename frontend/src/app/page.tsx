@@ -421,11 +421,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* --- INTEGRATIONS --- */}
-      <div id="integrations">
-        <Integrations />
-      </div>
-
       {/* --- FAQ --- */}
       <FAQ />
 
