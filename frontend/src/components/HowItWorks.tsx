@@ -57,8 +57,8 @@ export default function HowItWorks() {
                 <div className="text-cyan-500 mb-1">POST /api/v1/analyze</div>
                 <div className="text-slate-500">X-API-Key: fg_live_***</div>
                 <div>{`{`}</div>
-                <div className="pl-4">"amount": <span className="text-emerald-400">$15000.00</span>,</div>
-                <div className="pl-4">"location": <span className="text-emerald-400">"Kurumoch, Russian Federation"</span></div>
+                <div className="pl-4">"amount": <span className="text-cyan-400">$15000.00</span>,</div>
+                <div className="pl-4">"location": <span className="text-cyan-400">"Kurumoch, Russian Federation"</span></div>
                 <div>{`}`}</div>
               </div>
             </motion.div>

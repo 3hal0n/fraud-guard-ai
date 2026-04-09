@@ -67,7 +67,7 @@ const securityCards = [
     title: "Zero-Knowledge Architecture",
     desc: "We never store raw PII or credit card numbers. Data is instantly converted into PCA-anonymized feature vectors before hitting our inference engine.",
     icon: (
-      <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
       </svg>
     ),
@@ -311,12 +311,12 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row gap-12 items-end mb-16">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center justify-center px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-6">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-2" />
-                <span className="text-xs font-mono tracking-widest text-emerald-400 uppercase">Enterprise Grade</span>
+              <div className="inline-flex items-center justify-center px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-6">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mr-2" />
+                <span className="text-xs font-mono tracking-widest text-cyan-400 uppercase">Enterprise Grade</span>
               </div>
               <h2 className="text-3xl sm:text-5xl font-medium text-white tracking-tight">
-                Engineered for <span className="font-serif italic text-emerald-400">Compliance.</span>
+                Engineered for <span className="font-serif italic text-cyan-400">Compliance.</span>
               </h2>
             </div>
             <p className="text-slate-400 text-base md:text-lg max-w-lg mb-2">

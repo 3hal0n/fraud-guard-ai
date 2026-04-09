@@ -15,7 +15,7 @@ export default function StatusPage() {
               <div className="text-sm text-slate-300">API</div>
               <div className="text-xs text-slate-500">99.9% uptime</div>
             </div>
-            <div className="text-green-400 font-semibold">Operational</div>
+            <div className="text-cyan-400 font-semibold">Operational</div>
           </div>
         </div>
       </div>
