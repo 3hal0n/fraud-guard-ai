@@ -35,14 +35,7 @@ function ResizeMap() {
 }
 
 export default function GlobalThreatMap({ data }: { data: GeoData[] }) {
-  const [zoomLevel, setZoomLevel] = useState(2.5);
-
-  // Auto-adjust initial zoom for mobile devices to prevent clipping
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setZoomLevel(1.5);
-    }
-  }, []);
+  const [zoomLevel] = useState(() => (typeof window !== "undefined" && window.innerWidth < 768 ? 1.5 : 2.5));
 
   return (
     <MapContainer 

@@ -19,6 +19,8 @@ import {
 } from "recharts";
 import Link from "next/link";
 
+const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export default function DashboardPage() {
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   type ClerkLikeUser = {
@@ -45,7 +47,6 @@ export default function DashboardPage() {
   const usedChecks = userInfo?.daily_usage ?? 0;
   const maxChecks = userInfo?.daily_limit ?? 5;
   const usagePercentage = maxChecks > 0 ? Math.min((usedChecks / maxChecks) * 100, 100) : 0;
-  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   const formatUSD = (value: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);

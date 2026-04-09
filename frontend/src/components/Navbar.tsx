@@ -22,9 +22,9 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex-1 hidden md:flex justify-center gap-6 text-sm text-slate-300">
-          <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
-          <Link href="/api-docs" className="hover:text-white transition-colors">API Docs</Link>
-          <Link href="/status" className="hover:text-white transition-colors">Status</Link>
+          <Link href="/#how-it-works" className="hover:text-white transition-colors">How It Works</Link>
+          <Link href="/#security" className="hover:text-white transition-colors">Security</Link>
+          <Link href="/#pricing" className="hover:text-white transition-colors">Pricing</Link>
         </nav>
 
         <div className="flex items-center gap-2 ml-auto md:ml-0">
@@ -75,7 +75,9 @@ export default function Navbar() {
       {open && (
         <div className="pointer-events-auto absolute top-[64px] left-1/2 transform -translate-x-1/2 w-[92%] max-w-md bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-3 z-40 md:hidden">
             <nav className="flex flex-col gap-2 text-sm text-slate-200">
-            <Link onClick={() => setOpen(false)} href="/pricing" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Pricing</Link>
+            <Link onClick={() => setOpen(false)} href="/#how-it-works" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">How It Works</Link>
+            <Link onClick={() => setOpen(false)} href="/#pricing" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Pricing</Link>
+            <Link onClick={() => setOpen(false)} href="/#security" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Security</Link>
             <Link onClick={() => setOpen(false)} href="/api-docs" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">API Docs</Link>
             <Link onClick={() => setOpen(false)} href="/status" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Status</Link>
             <hr className="my-2 border-white/10" />

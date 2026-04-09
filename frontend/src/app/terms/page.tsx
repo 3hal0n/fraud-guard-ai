@@ -13,17 +13,17 @@ export default function TermsPage() {
 
         <section className="mb-6">
           <h2 className="text-xl font-medium text-white mb-2">Agreement</h2>
-          <p className="text-slate-400">These Terms of Service ("Terms") govern your access to and use of the FraudGuard AI services ("Service"). By using the Service, you agree to these Terms and our Privacy Policy.</p>
+          <p className="text-slate-400">These Terms of Service (&quot;Terms&quot;) govern your access to and use of the FraudGuard AI services (&quot;Service&quot;). By using the Service, you agree to these Terms and our Privacy Policy.</p>
         </section>
 
         <section className="mb-6">
           <h3 className="text-lg font-medium text-white mb-2">Account Terms</h3>
-          <p className="text-slate-400">You are responsible for maintaining the security of your account credentials. We use Clerk for authentication; account management actions may be subject to Clerk's terms.</p>
+          <p className="text-slate-400">You are responsible for maintaining the security of your account credentials. We use Clerk for authentication; account management actions may be subject to Clerk&apos;s terms.</p>
         </section>
 
         <section className="mb-6">
           <h3 className="text-lg font-medium text-white mb-2">Billing and Payment</h3>
-          <p className="text-slate-400">Payments are processed by Stripe. You agree to pay fees for the plans you select. Refunds, billing disputes, and invoicing are handled according to our billing policy and Stripe's terms.</p>
+          <p className="text-slate-400">Payments are processed by Stripe. You agree to pay fees for the plans you select. Refunds, billing disputes, and invoicing are handled according to our billing policy and Stripe&apos;s terms.</p>
         </section>
 
         <section className="mb-6">
@@ -43,7 +43,7 @@ export default function TermsPage() {
 
         <section className="mb-6">
           <h3 className="text-lg font-medium text-white mb-2">Disclaimer & Limitation of Liability</h3>
-          <p className="text-slate-400">The Service is provided "as is" and we disclaim implied warranties to the maximum extent permitted by law. Our liability is limited as set forth in these Terms; we are not liable for consequential damages arising from use of the Service.</p>
+          <p className="text-slate-400">The Service is provided &quot;as is&quot; and we disclaim implied warranties to the maximum extent permitted by law. Our liability is limited as set forth in these Terms; we are not liable for consequential damages arising from use of the Service.</p>
         </section>
 
         <section className="mb-6">

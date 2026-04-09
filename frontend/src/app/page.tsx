@@ -231,10 +231,12 @@ export default function LandingPage() {
 
       <SocialProof />
 
-      <HowItWorks />
+      <div id="how-it-works">
+        <HowItWorks />
+      </div>
 
       {/* --- FEATURES SECTION (Reduced top padding) --- */}
-      <section className="w-full pt-20 pb-10 bg-black relative z-10">
+      <section id="security" className="w-full pt-20 pb-10 bg-black relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16 max-w-2xl mx-auto">
             <h2 className="text-3xl sm:text-5xl font-medium text-white mb-6 tracking-tight">Ensuring complete <span className="font-serif italic text-cyan-400">security</span></h2>
@@ -275,7 +277,7 @@ export default function LandingPage() {
       </section>
 
       {/* --- PRICING SECTION (Reduced top padding) --- */}
-      <section className="pt-10 pb-32 px-4 sm:px-6 bg-black">
+      <section id="pricing" className="pt-10 pb-32 px-4 sm:px-6 bg-black">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-medium text-white mb-4 tracking-tight">Transparent pricing</h2>

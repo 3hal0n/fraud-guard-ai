@@ -13,7 +13,7 @@ export default function PrivacyPage() {
 
         <section className="mb-6">
           <h2 className="text-xl font-medium text-white mb-2">Introduction</h2>
-          <p className="text-slate-400">This Privacy Policy describes how FraudGuard AI ("we", "us", "our") collects, uses, discloses, and protects the personal data of our business customers and their end users in connection with our fraud detection software-as-a-service ("Service"). By using our Service, you agree to the collection and use of information in accordance with this policy.</p>
+          <p className="text-slate-400">This Privacy Policy describes how FraudGuard AI (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) collects, uses, discloses, and protects the personal data of our business customers and their end users in connection with our fraud detection software-as-a-service (&quot;Service&quot;). By using our Service, you agree to the collection and use of information in accordance with this policy.</p>
         </section>
 
         <section className="mb-6">
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
 
         <section className="mb-6">
           <h3 className="text-lg font-medium text-white mb-2">Data Retention</h3>
-          <p className="text-slate-400">We retain account and transaction data for as long as necessary to provide the Service, comply with legal obligations, resolve disputes, and enforce agreements. You may request deletion of your account data as described in the "Your Rights" section.</p>
+          <p className="text-slate-400">We retain account and transaction data for as long as necessary to provide the Service, comply with legal obligations, resolve disputes, and enforce agreements. You may request deletion of your account data as described in the &quot;Your Rights&quot; section.</p>
         </section>
 
         <section className="mb-6">

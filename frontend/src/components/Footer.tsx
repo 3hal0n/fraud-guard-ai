@@ -10,7 +10,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   const productLinks = [
-    { label: "Pricing", href: "/pricing" },
+    { label: "Pricing", href: "/#pricing" },
     { label: "API Docs", href: "/api-docs" },
     { label: "Dashboard", href: "/dashboard" },
   ];
@@ -63,7 +63,7 @@ export default function Footer() {
           </div>
 
           {/* Right: Navigation Links */}
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8">
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             {/* Column 1: Product */}
             <div className="space-y-4 sm:space-y-6">
               <h4 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
@@ -85,7 +85,7 @@ export default function Footer() {
 
             
 
-            {/* Column 3: Legal */}
+            {/* Column 2: Legal */}
             <div className="space-y-4 sm:space-y-6">
               <h4 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
                 Legal
