@@ -125,7 +125,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </Link>
         <div className="flex items-center gap-4">
           {clerkEnabled ? (
-            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 border border-white/10" } }} />
+            <div className="relative">
+              <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 border border-white/10" } }} />
+              {userInfo?.plan === "PRO" && (
+                <span className="absolute right-0 bottom-0 translate-y-1/2 translate-x-1/4 rounded-full bg-cyan-500 px-1 text-[9px] font-bold leading-none text-black border border-cyan-300">
+                  PRO
+                </span>
+              )}
+            </div>
           ) : (
             <Link href="/login" className="px-3 py-1 rounded bg-sky-600 text-white text-sm">Login</Link>
           )}
@@ -190,7 +197,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <div className="relative">
                     <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
                     {userInfo?.plan === "PRO" && (
-                      <span className="absolute -top-1 -right-1 rounded-full bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold leading-none text-black border border-cyan-300">
+                      <span className="absolute right-0 bottom-0 translate-y-1/2 translate-x-1/4 rounded-full bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold leading-none text-black border border-cyan-300">
                         PRO
                       </span>
                     )}
