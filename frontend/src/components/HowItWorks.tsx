@@ -16,7 +16,7 @@ export default function HowItWorks() {
             <span className="text-xs font-mono tracking-widest text-cyan-400 uppercase">System Architecture</span>
           </div>
           <h2 className="text-4xl sm:text-6xl font-medium text-white mb-6 tracking-tight leading-[0.9]">
-            The Sentinel <span className="font-serif italic text-cyan-400">Decision Engine</span>
+            FraudGuard AI <span className="font-serif italic text-cyan-400">Decision Engine</span>
           </h2>
           <p className="text-slate-400 text-lg font-light">
             A non-linear inference pipeline built for sub-100ms execution. See exactly how data flows from integration to automated blocking.

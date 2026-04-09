@@ -121,10 +121,7 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center w-full">
           
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="mb-8">
-             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-cyan-400">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                FraudGuard AI is now live
-             </div>
+             
           </motion.div>
 
           <motion.h1
