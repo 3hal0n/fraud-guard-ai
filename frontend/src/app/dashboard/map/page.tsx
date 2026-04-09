@@ -27,13 +27,10 @@ const DynamicMap = dynamic<{ data: MapPoint[] }>(() => import("@/components/Glob
 });
 
 const LOCATION_PRESETS: Record<string, Coordinates> = {
-  // Sri Lanka presets (requested)
   "colombo": { lat: 6.9271, lng: 79.8612 },
   "negombo": { lat: 7.2084, lng: 79.8358 },
   "sri lanka": { lat: 7.8731, lng: 80.7718 },
   "lk": { lat: 7.8731, lng: 80.7718 },
-
-  // Useful common fallbacks
   "united states": { lat: 39.8283, lng: -98.5795 },
   "usa": { lat: 39.8283, lng: -98.5795 },
   "uk": { lat: 55.3781, lng: -3.436 },
@@ -169,46 +166,47 @@ export default function ThreatMapPage() {
 
   return (
     <AppLayout>
-      <div className="h-[calc(100vh-100px)] flex flex-col space-y-4 max-w-7xl mx-auto">
+      {/* Added responsive padding, min-heights, and spacing */}
+      <div className="min-h-[calc(100vh-100px)] md:h-[calc(100vh-100px)] flex flex-col space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-0">
         
-        {/* Header & Controls */}
-        <div className="flex justify-between items-end">
+        {/* Header & Controls: Stacks on mobile, row on desktop */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <h1 className="text-3xl font-medium text-white tracking-tight">Global Threat Map</h1>
-            <p className="text-slate-400 mt-1">Geographic distribution of your saved transaction locations.</p>
+            <h1 className="text-2xl sm:text-3xl font-medium text-white tracking-tight">Global Threat Map</h1>
+            <p className="text-sm sm:text-base text-slate-400 mt-1">Geographic distribution of your saved transaction locations.</p>
           </div>
           
-          {/* Floating Filter Controls */}
-          <div className="flex bg-[#0A0A0A] border border-white/10 rounded-xl p-1">
+          {/* Floating Filter Controls: Wraps on small screens */}
+          <div className="flex flex-wrap w-full md:w-auto bg-[#0A0A0A] border border-white/10 rounded-xl p-1 gap-1">
             <button 
               onClick={() => setFilter("all")}
-              className={`px-4 py-2 rounded-lg text-sm transition-all ${filter === "all" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
+              className={`flex-1 md:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-all ${filter === "all" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
             >
-              Global View
+              Global
             </button>
             <button 
               onClick={() => setFilter("risk")}
-              className={`px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${filter === "risk" ? "bg-red-500/20 text-red-400" : "text-slate-400 hover:text-red-400"}`}
+              className={`flex-1 md:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-all flex items-center gap-2 ${filter === "risk" ? "bg-red-500/20 text-red-400" : "text-slate-400 hover:text-red-400"}`}
             >
-              <div className="w-2 h-2 rounded-full bg-red-500" /> High Risk
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" /> High Risk
             </button>
             <button 
               onClick={() => setFilter("safe")}
-              className={`px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${filter === "safe" ? "bg-cyan-500/20 text-cyan-400" : "text-slate-400 hover:text-cyan-400"}`}
+              className={`flex-1 md:flex-none justify-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-all flex items-center gap-2 ${filter === "safe" ? "bg-cyan-500/20 text-cyan-400" : "text-slate-400 hover:text-cyan-400"}`}
             >
-              <div className="w-2 h-2 rounded-full bg-cyan-500" /> Cleared
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-500" /> Cleared
             </button>
           </div>
         </div>
 
-        {/* The Map Container */}
-        <div className="flex-1 w-full bg-[#0A0A0A] rounded-2xl border border-white/5 shadow-2xl relative">
+        {/* The Map Container: Fixed mobile height, hidden overflow for clean borders */}
+        <div className="flex-1 w-full min-h-[50vh] md:min-h-0 bg-[#0A0A0A] rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden z-0">
           {loading ? (
-            <div className="w-full h-full flex items-center justify-center text-slate-400">Loading transaction locations...</div>
+            <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Loading transaction locations...</div>
           ) : error ? (
-            <div className="w-full h-full flex items-center justify-center text-red-400">{error}</div>
+            <div className="w-full h-full flex items-center justify-center text-red-400 text-sm">{error}</div>
           ) : filteredData.length === 0 ? (
-            <div className="w-full h-full flex items-center justify-center text-slate-400 text-center px-6">
+            <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm text-center px-6">
               No mapped locations found yet. Submit scans with city/country values such as Colombo, Sri Lanka or Negombo.
             </div>
           ) : (
