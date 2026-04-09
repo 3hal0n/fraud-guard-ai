@@ -17,6 +17,7 @@ from db import (
     get_user_telemetry_counts,
     increment_usage,
     save_transaction,
+    get_transaction_locations,
     save_or_update_payment,
     get_payment_history,
     get_subscription_by_stripe_subscription_id,
@@ -546,6 +547,8 @@ async def get_transactions(user_id: str, limit: int = 20):
             .limit(limit)
             .all()
         )
+        location_map = get_transaction_locations(db, [str(t.id) for t in txns])
+
         return [
             {
                 "id": t.id,
@@ -553,6 +556,7 @@ async def get_transactions(user_id: str, limit: int = 20):
                 "risk_score": float(t.risk_score),  # already 0-1 in DB
                 "status": "risk" if float(t.risk_score) >= 0.50 else "safe",
                 "timestamp": t.created_at.isoformat() if t.created_at else None,
+                "location": location_map.get(str(t.id)),
             }
             for t in txns
         ]
@@ -781,7 +785,14 @@ async def analyze(
         if db_ok:
             try:
                 tx_id = str(uuid.uuid4())
-                save_transaction(db, tx_id, user_id, float(transaction.amount), int(score))
+                save_transaction(
+                    db,
+                    tx_id,
+                    user_id,
+                    float(transaction.amount),
+                    int(score),
+                    transaction.location,
+                )
                 if user_id:
                     user = user or get_user(db, user_id)
                     increment_usage(db, user, 1)
@@ -886,7 +897,7 @@ async def analyze_bulk_csv(user_id: str = Form(...), file: UploadFile = File(...
 
                 tx_id = str(uuid.uuid4())
                 try:
-                    save_transaction(db, tx_id, user_id, amount, int(score))
+                    save_transaction(db, tx_id, user_id, amount, int(score), location)
                 except Exception as persist_exc:
                     logger.warning("Bulk persist failed for row %s: %s", idx, persist_exc)
 

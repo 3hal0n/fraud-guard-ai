@@ -156,6 +156,7 @@ export interface TransactionRecord {
   risk_score: number;
   status: "risk" | "safe";
   timestamp: string | null;
+  location?: string | null;
 }
 
 /** GET /api/v1/transactions/:id */

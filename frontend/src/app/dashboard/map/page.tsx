@@ -2,29 +2,170 @@
 
 import AppLayout from "@/components/AppLayout";
 import dynamic from "next/dynamic";
-import { useState, useMemo } from "react";
+import { getTransactions, TransactionRecord } from "@/lib/api";
+import { useUser } from "@clerk/nextjs";
+import { useEffect, useMemo, useState } from "react";
+
+type MapPoint = {
+  id: string;
+  lat: number;
+  lng: number;
+  status: "risk" | "safe";
+  amount: number;
+  city: string;
+};
+
+type Coordinates = {
+  lat: number;
+  lng: number;
+};
 
 // Dynamically import the map so it only loads on the client side
-const DynamicMap = dynamic(() => import("@/components/GlobalThreatMap"), {
+const DynamicMap = dynamic<{ data: MapPoint[] }>(() => import("@/components/GlobalThreatMap"), {
   ssr: false,
   loading: () => <div className="w-full h-full flex items-center justify-center text-cyan-400">Initializing Satellite Uplink...</div>,
 });
 
-export default function ThreatMapPage() {
-  const [filter, setFilter] = useState<"all" | "risk" | "safe">("all");
+const LOCATION_PRESETS: Record<string, Coordinates> = {
+  // Sri Lanka presets (requested)
+  "colombo": { lat: 6.9271, lng: 79.8612 },
+  "negombo": { lat: 7.2084, lng: 79.8358 },
+  "sri lanka": { lat: 7.8731, lng: 80.7718 },
+  "lk": { lat: 7.8731, lng: 80.7718 },
 
-  // TODO: Fetch this from your backend API
-  const mockGeoData = [
-    { id: "1", lat: 55.7558, lng: 37.6173, status: "risk", amount: 85000, city: "Moscow, RU" },
-    { id: "2", lat: 40.7128, lng: -74.0060, status: "safe", amount: 120, city: "New York, USA" },
-    { id: "3", lat: 9.0820, lng: 8.6753, status: "risk", amount: 4500, city: "Abuja, NG" },
-    { id: "4", lat: 51.5074, lng: -0.1278, status: "safe", amount: 85, city: "London, UK" },
-  ];
+  // Useful common fallbacks
+  "united states": { lat: 39.8283, lng: -98.5795 },
+  "usa": { lat: 39.8283, lng: -98.5795 },
+  "uk": { lat: 55.3781, lng: -3.436 },
+  "united kingdom": { lat: 55.3781, lng: -3.436 },
+};
+
+function normalizeLocation(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getPresetCoordinates(location: string): Coordinates | null {
+  const normalized = normalizeLocation(location);
+  if (LOCATION_PRESETS[normalized]) return LOCATION_PRESETS[normalized];
+
+  const segments = normalized
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  for (const segment of segments) {
+    if (LOCATION_PRESETS[segment]) return LOCATION_PRESETS[segment];
+  }
+
+  return null;
+}
+
+async function geocodeLocation(location: string): Promise<Coordinates | null> {
+  const preset = getPresetCoordinates(location);
+  if (preset) return preset;
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(location)}`
+    );
+
+    if (!response.ok) return null;
+
+    const results = (await response.json()) as Array<{ lat: string; lon: string }>;
+    if (!results.length) return null;
+
+    return {
+      lat: Number(results[0].lat),
+      lng: Number(results[0].lon),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function toMapPoint(txn: TransactionRecord, coords: Coordinates): MapPoint {
+  return {
+    id: txn.id,
+    lat: coords.lat,
+    lng: coords.lng,
+    status: txn.status,
+    amount: Number(txn.amount ?? 0),
+    city: (txn.location || "Unknown").trim() || "Unknown",
+  };
+}
+
+export default function ThreatMapPage() {
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  let user: { id?: string } | null = null;
+  if (clerkEnabled) {
+    const u = useUser();
+    user = u?.user ?? null;
+  }
+
+  const [filter, setFilter] = useState<"all" | "risk" | "safe">("all");
+  const [points, setPoints] = useState<MapPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadMapData() {
+      if (!user?.id) {
+        setPoints([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const txns = await getTransactions(user.id, 200);
+        const withLocation = txns.filter((txn) => (txn.location || "").trim().length > 0);
+        const uniqueLocations = Array.from(new Set(withLocation.map((txn) => (txn.location || "").trim())));
+
+        const coordCache = new Map<string, Coordinates | null>();
+        for (const location of uniqueLocations) {
+          const coords = await geocodeLocation(location);
+          coordCache.set(location, coords);
+        }
+
+        const mappedPoints = withLocation
+          .map((txn) => {
+            const key = (txn.location || "").trim();
+            const coords = coordCache.get(key);
+            if (!coords) return null;
+            return toMapPoint(txn, coords);
+          })
+          .filter((point): point is MapPoint => point !== null);
+
+        if (!isCancelled) {
+          setPoints(mappedPoints);
+        }
+      } catch {
+        if (!isCancelled) {
+          setError("Failed to load map data from transaction history.");
+          setPoints([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadMapData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?.id]);
 
   const filteredData = useMemo(() => {
-    if (filter === "all") return mockGeoData;
-    return mockGeoData.filter((d) => d.status === filter);
-  }, [filter]);
+    if (filter === "all") return points;
+    return points.filter((d) => d.status === filter);
+  }, [filter, points]);
 
   return (
     <AppLayout>
@@ -34,7 +175,7 @@ export default function ThreatMapPage() {
         <div className="flex justify-between items-end">
           <div>
             <h1 className="text-3xl font-medium text-white tracking-tight">Global Threat Map</h1>
-            <p className="text-slate-400 mt-1">Real-time geographic distribution of transaction origins.</p>
+            <p className="text-slate-400 mt-1">Geographic distribution of your saved transaction locations.</p>
           </div>
           
           {/* Floating Filter Controls */}
@@ -62,7 +203,17 @@ export default function ThreatMapPage() {
 
         {/* The Map Container */}
         <div className="flex-1 w-full bg-[#0A0A0A] rounded-2xl border border-white/5 shadow-2xl relative">
-            <DynamicMap data={filteredData as any} />
+          {loading ? (
+            <div className="w-full h-full flex items-center justify-center text-slate-400">Loading transaction locations...</div>
+          ) : error ? (
+            <div className="w-full h-full flex items-center justify-center text-red-400">{error}</div>
+          ) : filteredData.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-slate-400 text-center px-6">
+              No mapped locations found yet. Submit scans with city/country values such as Colombo, Sri Lanka or Negombo.
+            </div>
+          ) : (
+            <DynamicMap data={filteredData} />
+          )}
         </div>
 
       </div>

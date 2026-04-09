@@ -82,6 +82,19 @@ class Transaction(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class TransactionLocation(Base):
+    __tablename__ = "transaction_locations"
+    __table_args__ = {"schema": DB_SCHEMA} if DB_SCHEMA else {}
+    tx_id = Column(
+        TX_ID_TYPE,
+        ForeignKey("transactions.id" if IS_SQLITE else "fraudguard.transactions.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    location = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
     __table_args__ = {"schema": DB_SCHEMA} if DB_SCHEMA else {}
@@ -164,14 +177,35 @@ def increment_usage(db, user: User, amount: int = 1):
     return user
 
 
-def save_transaction(db, tx_id: str, user_id: str | None, amount: float, risk_score: int):
+def save_transaction(
+    db,
+    tx_id: str,
+    user_id: str | None,
+    amount: float,
+    risk_score: int,
+    location: str | None = None,
+):
     # risk_score arrives as 0-100 int; DB column is numeric(5,4) so store as 0-1 float
     score_float = round(risk_score / 100, 4)
     tx = Transaction(id=tx_id, user_id=user_id, amount=amount, risk_score=score_float, created_at=datetime.utcnow())
     db.add(tx)
+    normalized_location = (location or "").strip()
+    if normalized_location:
+        db.add(TransactionLocation(tx_id=tx_id, location=normalized_location, created_at=datetime.utcnow()))
     db.commit()
     db.refresh(tx)
     return tx
+
+
+def get_transaction_locations(db, tx_ids: list[str]) -> dict[str, str]:
+    if not tx_ids:
+        return {}
+    rows = (
+        db.query(TransactionLocation)
+        .filter(TransactionLocation.tx_id.in_(tx_ids))
+        .all()
+    )
+    return {str(row.tx_id): row.location for row in rows if row.location}
 
 
 def create_user_if_not_exists(db, user_id: str, email: str | None = None, plan: str = "FREE"):
