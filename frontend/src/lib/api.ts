@@ -18,7 +18,17 @@ export interface AnalyzeRequest {
 export interface AnalyzeResponse {
   risk_score: number;
   status: "APPROVED" | "PENDING_REVIEW" | "BLOCK_TRANSACTION";
+  applied_rules?: RulesEngineSettings;
   risk_factors: RiskFactor[];
+}
+
+export interface RulesEngineSettings {
+  profile: "GENERAL" | "CUSTOM";
+  review_threshold: number;
+  block_threshold: number;
+  block_on_location_mismatch: boolean;
+  location_mismatch_min_score: number;
+  can_edit?: boolean;
 }
 
 export interface RiskFactor {
@@ -148,6 +158,22 @@ export interface TelemetrySummary {
 /** GET /api/v1/user/:id */
 export async function getUserInfo(userId: string): Promise<UserInfo> {
   return request<UserInfo>(`/api/v1/user/${userId}`);
+}
+
+/** GET /api/v1/user/:id/rules-engine */
+export async function getRulesEngineSettings(userId: string): Promise<RulesEngineSettings> {
+  return request<RulesEngineSettings>(`/api/v1/user/${userId}/rules-engine`);
+}
+
+/** PUT /api/v1/user/:id/rules-engine */
+export async function updateRulesEngineSettings(
+  userId: string,
+  payload: RulesEngineSettings
+): Promise<RulesEngineSettings> {
+  return request<RulesEngineSettings>(`/api/v1/user/${userId}/rules-engine`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 export interface TransactionRecord {

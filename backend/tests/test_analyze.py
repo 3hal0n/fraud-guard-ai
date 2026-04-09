@@ -234,6 +234,52 @@ def test_bulk_csv_requires_pro_and_returns_rows():
     assert any(row["status"] == "BLOCK_TRANSACTION" for row in body["flagged_rows"])
 
 
+def test_rules_engine_custom_thresholds_for_pro_user():
+    client.post("/api/v1/webhook/clerk", json={
+        "type": "user.created",
+        "data": {"id": "clerk-rules-user", "email": "rules@example.com"},
+    })
+
+    from db import SessionLocal, get_user
+    db = SessionLocal()
+    try:
+        u = get_user(db, "clerk-rules-user")
+        u.plan = "PRO"
+        db.add(u)
+        db.commit()
+    finally:
+        db.close()
+
+    update_resp = client.put(
+        "/api/v1/user/clerk-rules-user/rules-engine",
+        json={
+            "profile": "CUSTOM",
+            "review_threshold": 20,
+            "block_threshold": 90,
+            "block_on_location_mismatch": False,
+            "location_mismatch_min_score": 85,
+        },
+    )
+    assert update_resp.status_code == 200, update_resp.text
+
+    analyze_resp = client.post(
+        "/api/v1/analyze",
+        json={
+            "amount": 5000.0,
+            "merchant": "unknown",
+            "location": "Unknown",
+            "user_id": "clerk-rules-user",
+        },
+    )
+    assert analyze_resp.status_code == 200, analyze_resp.text
+    body = analyze_resp.json()
+    assert body["status"] in ("PENDING_REVIEW", "BLOCK_TRANSACTION")
+    # With block threshold raised to 90, high-risk payloads should not be
+    # auto-blocked at the old 70 threshold.
+    if body["risk_score"] < 90:
+        assert body["status"] == "PENDING_REVIEW"
+
+
 def test_create_checkout_session_returns_url(monkeypatch):
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
     monkeypatch.setenv("STRIPE_PRICE_ID", "price_test_dummy")

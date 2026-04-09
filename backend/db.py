@@ -137,6 +137,20 @@ class ApiKey(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class RulesEngineSettings(Base):
+    __tablename__ = "rules_engine_settings"
+    __table_args__ = {"schema": DB_SCHEMA} if DB_SCHEMA else {}
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id" if IS_SQLITE else "fraudguard.users.id"), nullable=False, unique=True, index=True)
+    profile = Column(String, nullable=False, default="GENERAL")
+    review_threshold = Column(Integer, nullable=False, default=30)
+    block_threshold = Column(Integer, nullable=False, default=70)
+    block_on_location_mismatch = Column(Boolean, nullable=False, default=False)
+    location_mismatch_min_score = Column(Integer, nullable=False, default=85)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 def create_tables():
     if engine is None:
         return
@@ -391,3 +405,48 @@ def reset_daily_usage_all(db):
     """Set daily_usage to 0 for all users."""
     db.query(User).update({User.daily_usage: 0})
     db.commit()
+
+
+def get_or_create_rules_engine_settings(db, user_id: str):
+    row = (
+        db.query(RulesEngineSettings)
+        .filter(RulesEngineSettings.user_id == user_id)
+        .first()
+    )
+    if row:
+        return row
+
+    row = RulesEngineSettings(
+        user_id=user_id,
+        profile="GENERAL",
+        review_threshold=30,
+        block_threshold=70,
+        block_on_location_mismatch=False,
+        location_mismatch_min_score=85,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def update_rules_engine_settings(
+    db,
+    user_id: str,
+    *,
+    profile: str,
+    review_threshold: int,
+    block_threshold: int,
+    block_on_location_mismatch: bool,
+    location_mismatch_min_score: int,
+):
+    row = get_or_create_rules_engine_settings(db, user_id)
+    row.profile = (profile or "GENERAL").upper()
+    row.review_threshold = int(review_threshold)
+    row.block_threshold = int(block_threshold)
+    row.block_on_location_mismatch = bool(block_on_location_mismatch)
+    row.location_mismatch_min_score = int(location_mismatch_min_score)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row

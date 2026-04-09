@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import SocialProof from "@/components/SocialProof";
 import HowItWorks from "@/components/HowItWorks";
-import Integrations from "@/components/Integrations";
 import FAQ from "@/components/FAQ";
 
 type CardData = {
@@ -322,7 +321,7 @@ export default function LandingPage() {
               </h2>
             </div>
             <p className="text-slate-400 text-base md:text-lg max-w-lg mb-2">
-              FraudGuard AI is designed with privacy-first architecture. We secure your transactions without compromising your users' sensitive data.
+              FraudGuard AI is designed with privacy-first architecture. We secure your transactions without compromising your users&apos; sensitive data.
             </p>
           </div>
 

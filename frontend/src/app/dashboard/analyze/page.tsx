@@ -2,13 +2,14 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 
 import AppLayout from "@/components/AppLayout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { analyzeTransaction, ApiError } from "@/lib/api";
+import { analyzeTransaction, ApiError, getRulesEngineSettings, getUserInfo, updateRulesEngineSettings } from "@/lib/api";
 import type { RiskFactor } from "@/lib/api";
+import type { RulesEngineSettings, UserInfo } from "@/lib/api";
 import { motion } from "framer-motion";
 import ScanResults from "@/components/ScanResults";
 
@@ -21,6 +22,14 @@ const analyzeSchema = z.object({
 });
 type AnalyzeFormData = z.infer<typeof analyzeSchema>;
 type AnalyzeFormInput = z.input<typeof analyzeSchema>;
+
+const GENERAL_RULES: RulesEngineSettings = {
+  profile: "GENERAL",
+  review_threshold: 30,
+  block_threshold: 70,
+  block_on_location_mismatch: false,
+  location_mismatch_min_score: 85,
+};
 
 function generateFraudIndicators(data: AnalyzeFormData, riskScore: number): string[] {
   const indicators: string[] = [];
@@ -49,6 +58,10 @@ export default function AnalyzePage() {
     user = u?.user ?? null;
   }
   const [isScanning, setIsScanning] = useState(false);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [rules, setRules] = useState<RulesEngineSettings>(GENERAL_RULES);
+  const [rulesSaving, setRulesSaving] = useState(false);
+  const [rulesNotice, setRulesNotice] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<{ riskScore: number; status: "APPROVED" | "PENDING_REVIEW" | "BLOCK_TRANSACTION"; elapsed?: number; riskFactors: RiskFactor[] } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [submittedFormData, setSubmittedFormData] = useState<AnalyzeFormData | null>(null);
@@ -56,6 +69,17 @@ export default function AnalyzePage() {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AnalyzeFormInput, unknown, AnalyzeFormData>({
     resolver: zodResolver(analyzeSchema),
   });
+
+  const allowProForTesting = process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1";
+  const isPro = userInfo?.plan === "PRO" || allowProForTesting;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getUserInfo(user.id).then(setUserInfo).catch(() => null);
+    getRulesEngineSettings(user.id)
+      .then(setRules)
+      .catch(() => setRules(GENERAL_RULES));
+  }, [user?.id]);
 
   const onSubmit = async (data: AnalyzeFormData) => {
     setIsScanning(true); setScanResult(null); setApiError(null); setSubmittedFormData(data);
@@ -76,6 +100,39 @@ export default function AnalyzePage() {
 
   const handleScanAnother = () => { setScanResult(null); setApiError(null); setSubmittedFormData(null); reset(); };
 
+  const saveRules = async () => {
+    if (!user?.id) {
+      setRulesNotice("Sign in to save rules settings.");
+      return;
+    }
+    if (!isPro) {
+      setRulesNotice("Rules customization is available on the PRO plan.");
+      return;
+    }
+
+    const payload = rules.profile === "GENERAL"
+      ? { ...GENERAL_RULES }
+      : { ...rules };
+
+    if (payload.review_threshold >= payload.block_threshold) {
+      setRulesNotice("Review threshold must be lower than block threshold.");
+      return;
+    }
+
+    setRulesSaving(true);
+    setRulesNotice(null);
+    try {
+      const saved = await updateRulesEngineSettings(user.id, payload);
+      setRules(saved);
+      setRulesNotice("Rules saved.");
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setRulesNotice(apiErr.detail || "Failed to save rules.");
+    } finally {
+      setRulesSaving(false);
+    }
+  };
+
   const isBlocked = scanResult ? scanResult.status === "BLOCK_TRANSACTION" : false;
   const fraudIndicators = isBlocked && submittedFormData ? generateFraudIndicators(submittedFormData, scanResult!.riskScore) : [];
 
@@ -93,6 +150,91 @@ export default function AnalyzePage() {
           {/* Input Form */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-5 bg-[#0A0A0A] border border-white/5 rounded-4xl p-8 h-fit">
             <h2 className="text-lg font-medium text-white mb-6">Payload Parameters</h2>
+
+            <div className="mb-6 rounded-2xl border border-white/10 bg-[#111113] p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-white">Rules Engine</h3>
+                <span className={`text-[11px] px-2 py-1 rounded-full border ${isPro ? "text-cyan-300 border-cyan-500/30 bg-cyan-500/10" : "text-slate-400 border-white/10"}`}>
+                  {isPro ? "PRO" : "General only"}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold tracking-wider uppercase text-slate-500 mb-2">Profile</label>
+                <select
+                  value={rules.profile}
+                  onChange={(e) => {
+                    const profile = e.target.value as "GENERAL" | "CUSTOM";
+                    setRules(profile === "GENERAL" ? { ...GENERAL_RULES } : { ...rules, profile: "CUSTOM" });
+                  }}
+                  disabled={!isPro}
+                  className="w-full px-3 py-2.5 bg-[#121214] border border-white/10 rounded-xl text-white text-sm disabled:opacity-60"
+                >
+                  <option value="GENERAL">General (default)</option>
+                  <option value="CUSTOM">Custom</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Review threshold</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    value={rules.review_threshold}
+                    disabled={!isPro || rules.profile === "GENERAL"}
+                    onChange={(e) => setRules((prev) => ({ ...prev, review_threshold: Number(e.target.value || 0) }))}
+                    className="w-full px-3 py-2.5 bg-[#121214] border border-white/10 rounded-xl text-white text-sm disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Block threshold</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={rules.block_threshold}
+                    disabled={!isPro || rules.profile === "GENERAL"}
+                    onChange={(e) => setRules((prev) => ({ ...prev, block_threshold: Number(e.target.value || 0) }))}
+                    className="w-full px-3 py-2.5 bg-[#121214] border border-white/10 rounded-xl text-white text-sm disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={rules.block_on_location_mismatch}
+                  disabled={!isPro || rules.profile === "GENERAL"}
+                  onChange={(e) => setRules((prev) => ({ ...prev, block_on_location_mismatch: e.target.checked }))}
+                />
+                Block on location mismatch signal
+              </label>
+
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Location mismatch min score</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={rules.location_mismatch_min_score}
+                  disabled={!isPro || rules.profile === "GENERAL" || !rules.block_on_location_mismatch}
+                  onChange={(e) => setRules((prev) => ({ ...prev, location_mismatch_min_score: Number(e.target.value || 0) }))}
+                  className="w-full px-3 py-2.5 bg-[#121214] border border-white/10 rounded-xl text-white text-sm disabled:opacity-60"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={saveRules}
+                disabled={!isPro || rulesSaving}
+                className="w-full px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-sm font-medium"
+              >
+                {rulesSaving ? "Saving..." : "Save Rules"}
+              </button>
+              {rulesNotice && <p className="text-xs text-slate-400">{rulesNotice}</p>}
+            </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               
