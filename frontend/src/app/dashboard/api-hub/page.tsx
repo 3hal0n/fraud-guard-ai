@@ -74,27 +74,73 @@ export default function ApiHubPage() {
     "time": "2026-03-22 10:30"
   }'`;
   }, [apiKey]);
-
   const pythonSnippet = useMemo(() => {
     const key = apiKey || "<YOUR_API_KEY>";
     return `import requests
 
 url = "${backendUrl}/api/v1/analyze"
 headers = {
-    "Content-Type": "application/json",
-    "X-API-Key": "${key}",
+  "Content-Type": "application/json",
+  "X-API-Key": "${key}",
 }
 payload = {
-    "amount": 199.99,
-    "merchant": "electronics",
-    "location": "Austin",
-    "time": "2026-03-22 10:30",
+  "amount": 199.99,
+  "merchant": "electronics",
+  "location": "Austin",
+  "time": "2026-03-22 10:30",
 }
 
 response = requests.post(url, headers=headers, json=payload, timeout=15)
 print(response.status_code)
 print(response.json())`;
   }, [apiKey]);
+
+  const jsFetchSnippet = useMemo(() => {
+    const key = apiKey || "<YOUR_API_KEY>";
+    return `const url = "${backendUrl}/api/v1/analyze";
+const payload = {
+  amount: 199.99,
+  merchant: "electronics",
+  location: "Austin",
+  time: "2026-03-22 10:30",
+};
+
+fetch(url, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": "${key}",
+  },
+  body: JSON.stringify(payload),
+})
+.then((r) => r.json())
+.then(console.log)
+.catch(console.error);`;
+  }, [apiKey]);
+
+  const axiosSnippet = useMemo(() => {
+    const key = apiKey || "<YOUR_API_KEY>";
+    return `import axios from "axios";
+
+const url = "${backendUrl}/api/v1/analyze";
+const payload = { amount: 199.99, merchant: "electronics", location: "Austin", time: "2026-03-22 10:30" };
+
+axios.post(url, payload, { headers: { "X-API-Key": "${key}", "Content-Type": "application/json" } })
+  .then(res => console.log(res.data))
+  .catch(err => console.error(err));`;
+  }, [apiKey]);
+
+  const bulkCsvCurlSnippet = useMemo(() => {
+    const key = apiKey || "<YOUR_API_KEY>";
+    return `curl -X POST "${backendUrl}/api/v1/analyze/bulk-csv" \\
+  -H "X-API-Key: ${key}" \\
+  -F "user_id=YOUR_USER_ID" \\
+  -F "file=@transactions.csv;type=text/csv"`;
+  }, [apiKey]);
+
+  const postmanNotes = useMemo(() => {
+    return `To import into Postman: use the cURL snippet (top-left) and in Postman choose Import → Raw text → paste the cURL command.\n\nSet header "X-API-Key" with your key. For bulk uploads, use the Bulk CSV endpoint and set form-data with keys: user_id (string) and file (file).`;
+  }, []);
 
   const onGenerate = async () => {
     if (!user?.id) return;
@@ -215,14 +261,57 @@ print(response.json())`;
               )}
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6">
-                <h3 className="text-white font-medium mb-3">cURL</h3>
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-white font-medium">cURL</h3>
+                  <button onClick={() => navigator.clipboard.writeText(curlSnippet)} className="text-xs text-slate-400 hover:text-white">Copy</button>
+                </div>
                 <pre className="text-xs text-slate-300 bg-[#121214] border border-white/5 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap">{curlSnippet}</pre>
               </div>
+
               <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6">
-                <h3 className="text-white font-medium mb-3">Python</h3>
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-white font-medium">Python</h3>
+                  <button onClick={() => navigator.clipboard.writeText(pythonSnippet)} className="text-xs text-slate-400 hover:text-white">Copy</button>
+                </div>
                 <pre className="text-xs text-slate-300 bg-[#121214] border border-white/5 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap">{pythonSnippet}</pre>
+              </div>
+
+              <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-white font-medium">JavaScript (fetch)</h3>
+                  <button onClick={() => navigator.clipboard.writeText(jsFetchSnippet)} className="text-xs text-slate-400 hover:text-white">Copy</button>
+                </div>
+                <pre className="text-xs text-slate-300 bg-[#121214] border border-white/5 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap">{jsFetchSnippet}</pre>
+              </div>
+
+              <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-white font-medium">Axios (Node/Browser)</h3>
+                  <button onClick={() => navigator.clipboard.writeText(axiosSnippet)} className="text-xs text-slate-400 hover:text-white">Copy</button>
+                </div>
+                <pre className="text-xs text-slate-300 bg-[#121214] border border-white/5 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap">{axiosSnippet}</pre>
+              </div>
+
+              <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-white font-medium">Bulk CSV</h3>
+                  <button onClick={() => navigator.clipboard.writeText(bulkCsvCurlSnippet)} className="text-xs text-slate-400 hover:text-white">Copy</button>
+                </div>
+                <pre className="text-xs text-slate-300 bg-[#121214] border border-white/5 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap">{bulkCsvCurlSnippet}</pre>
+              </div>
+
+              <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 sm:col-span-2 lg:col-span-1">
+                <h3 className="text-white font-medium mb-3">Postman / Tips</h3>
+                <p className="text-slate-400 text-sm whitespace-pre-wrap">{postmanNotes}</p>
+                <hr className="border-white/5 my-4" />
+                <h4 className="text-sm text-white font-medium mb-2">Endpoints</h4>
+                <ul className="text-sm text-slate-300 space-y-2">
+                  <li><strong>/api/v1/analyze</strong> — POST JSON payload to score a single transaction.</li>
+                  <li><strong>/api/v1/analyze/bulk-csv</strong> — POST multipart/form-data for CSV bulk audit (PRO only).</li>
+                  <li><strong>/api/v1/transactions/:user_id</strong> — GET recent transactions for a user.</li>
+                </ul>
               </div>
             </div>
           </>
