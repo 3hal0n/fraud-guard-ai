@@ -40,6 +40,33 @@ SCALER = None  # sklearn StandardScaler (or similar)
 _LOAD_ATTEMPTED = False
 
 
+def _extract_fraud_probability(model, probabilities: np.ndarray) -> float:
+    """Extract P(fraud) from predict_proba output robustly.
+
+    Some models expose class order as [0, 1], others [1, 0], and some may
+    use string labels. We first resolve using model.classes_, then fall back
+    to index 1 for backward compatibility.
+    """
+    classes = getattr(model, "classes_", None)
+
+    if classes is not None and len(classes) == len(probabilities):
+        # Prefer canonical binary labels first.
+        for preferred in (1, "1", True, "true", "fraud", "risk"):
+            for idx, label in enumerate(classes):
+                if str(label).strip().lower() == str(preferred).strip().lower():
+                    return float(probabilities[idx])
+
+        # If we still cannot resolve labels, use the highest non-safe score.
+        for idx, label in enumerate(classes):
+            normalized = str(label).strip().lower()
+            if normalized in {"0", "false", "safe", "legit", "legitimate", "non_fraud", "non-fraud"}:
+                continue
+            return float(probabilities[idx])
+
+    # Fallback to historical behavior when class labels are unavailable.
+    return float(probabilities[1]) if len(probabilities) > 1 else float(probabilities[0])
+
+
 # ---------------------------------------------------------------------------
 # Public: called once from FastAPI lifespan
 # ---------------------------------------------------------------------------
@@ -273,9 +300,9 @@ def predict_fraud(
     row_values = [scaled_time] + v_features.tolist() + [scaled_amount]
     df = pd.DataFrame([row_values], columns=FEATURE_COLUMNS)
 
-    # 5. Inference: predict_proba returns shape (1, 2) → [P(legit), P(fraud)]
+    # 5. Inference: resolve fraud probability using model class labels.
     proba = MODEL.predict_proba(df)[0]
-    fraud_prob = float(proba[1])
+    fraud_prob = _extract_fraud_probability(MODEL, proba)
     ml_score = max(0, min(100, round(fraud_prob * 100)))
 
     # 6. Heuristic floor — ensures real-world suspicious inputs are never
