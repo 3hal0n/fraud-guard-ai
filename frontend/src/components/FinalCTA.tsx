@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export default function FinalCTA() {
   return (
-    <section className="relative py-32 bg-black overflow-hidden border-t border-white/5">
+    <section className="relative py-24 bg-black overflow-hidden">
       {/* Background Gradients & Glows */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-cyan-950/20 pointer-events-none" />
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-600/20 blur-[120px] rounded-full pointer-events-none" />

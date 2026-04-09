@@ -6,7 +6,6 @@ import SocialProof from "@/components/SocialProof";
 import HowItWorks from "@/components/HowItWorks";
 import Integrations from "@/components/Integrations";
 import FAQ from "@/components/FAQ";
-import FinalCTA from "@/components/FinalCTA";
 
 type CardData = {
   title: string;
@@ -431,9 +430,7 @@ export default function LandingPage() {
       <FAQ />
 
       {/* --- FINAL CTA --- */}
-      <div id="final-cta">
-        <FinalCTA />
-      </div>
+      <div id="final-cta" />
     </div>
   );
 }

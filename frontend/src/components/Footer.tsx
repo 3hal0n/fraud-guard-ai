@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import FinalCTA from "@/components/FinalCTA";
 import { usePathname } from "next/navigation";
 
 export default function Footer() {
@@ -21,7 +22,10 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="relative mt-16 sm:mt-24 md:mt-32 w-full bg-black border-t border-cyan-500/10 overflow-hidden">
+    <>
+      {pathname === "/" && <FinalCTA />}
+
+      <footer className="relative mt-0 sm:mt-0 md:mt-0 w-full bg-black border-t border-cyan-500/10 overflow-hidden">
       {/* Background Texture (Subtle Grid) */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#22d3ee1f_1px,transparent_1px),linear-gradient(to_bottom,#22d3ee1f_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
@@ -128,6 +132,7 @@ export default function Footer() {
         </h1>
       </div>
     </footer>
+    </>
   );
 }
 
