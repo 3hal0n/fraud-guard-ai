@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
@@ -10,7 +11,12 @@ export default function Footer() {
 
   const productLinks = ["Features", "Pricing", "API Docs", "Dashboard"];
   const companyLinks = ["About", "Blog", "Careers", "Contact"];
-  const legalLinks = ["Privacy Policy", "Terms of Service", "Security", "Status"];
+  const legalLinks = [
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Security", href: "#" },
+    { label: "Status", href: "#" },
+  ];
 
   return (
     <footer className="relative mt-16 sm:mt-24 md:mt-32 w-full bg-black border-t border-cyan-500/10 overflow-hidden">
@@ -104,13 +110,13 @@ export default function Footer() {
               </h4>
               <ul className="space-y-3 sm:space-y-4">
                 {legalLinks.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
+                  <li key={item.label}>
+                    <Link
+                      href={item.href}
                       className="text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95"
                     >
-                      {item}
-                    </a>
+                      {item.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
