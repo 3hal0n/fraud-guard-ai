@@ -271,7 +271,16 @@ export default function DashboardPage() {
                   
                   <CartesianGrid stroke="#ffffff" strokeOpacity={0.03} vertical={false} strokeDasharray="3 3" />
                   <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(val) => `$${val / 1000}k`} />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 11 }} 
+                    tickFormatter={(val) => {
+                      if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+                      if (val >= 1000) return `$${(val / 1000).toFixed(0)}k`;
+                      return `$${val}`;
+                    }} 
+                  />
                   
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ffffff', strokeOpacity: 0.1, strokeWidth: 1, strokeDasharray: '4 4' }} />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
@@ -382,6 +391,17 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="font-medium text-white mb-0.5 text-sm">Developer API Hub</h3>
                   <p className="text-[11px] text-slate-500">Generate and use API keys</p>
+                </div>
+              </Link>
+            )}
+            { (userInfo?.plan === "PRO" || process.env.NEXT_PUBLIC_ALLOW_PRO_TEST === "1") && (
+              <Link href="/dashboard/bulk-audit" className="group bg-[#0A0A0A] border border-white/5 rounded-3xl p-5 hover:border-white/20 transition-all flex items-center gap-4 shadow-xl">
+                <div className="w-10 h-10 bg-[#121214] border border-white/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7h16M4 12h16M4 17h10m4 0l2-2m0 0l-2-2m2 2H14" /></svg>
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-0.5 text-sm">Bulk CSV Audit</h3>
+                  <p className="text-[11px] text-slate-500">Scan up to 100 rows at once</p>
                 </div>
               </Link>
             )}
