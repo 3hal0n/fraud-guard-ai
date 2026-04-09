@@ -255,6 +255,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="relative z-10">
             {children}
           </div>
+          {/* --- MICRO FOOTER (shown when user is logged in) --- */}
+          {userInfo && (
+            <div className="mt-12 pt-6 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <p className="text-xs text-slate-500">
+                © {new Date().getFullYear()} FraudGuard AI. All rights reserved.
+              </p>
+              <div className="flex gap-6 text-xs font-medium text-slate-400">
+                <Link href="/docs" className="hover:text-cyan-400 transition-colors">API Docs</Link>
+                <Link href="/status" className="hover:text-cyan-400 transition-colors">System Status</Link>
+                <Link href="/support" className="hover:text-cyan-400 transition-colors">Support</Link>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
