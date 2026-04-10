@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 export default function Footer() {
   const pathname = usePathname();
   if (pathname?.startsWith("/dashboard")) return null;
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
 
   const productLinks = [
     { label: "Pricing", href: "/#pricing" },
@@ -113,14 +113,22 @@ export default function Footer() {
         {/* Bottom Bar: Copyright & Socials */}
         <div className="border-t border-white/10 pt-6 sm:pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-slate-500 text-xs sm:text-sm text-center md:text-left">
-            © {currentYear} FraudGuard AI. All rights reserved.
+            © {currentYear} FraudGuard AI. All rights reserved. With Shalon Fernando.
           </div>
 
           <div className="flex items-center gap-4 sm:gap-6">
-            <SocialIcon icon={MailIcon} label="Email" href="mailto:support@fraudguardai.com" />
-            <SocialIcon icon={GithubIcon} label="GitHub" href="#" />
-            <SocialIcon icon={TwitterIcon} label="Twitter" href="#" />
-            <SocialIcon icon={LinkedinIcon} label="LinkedIn" href="#" />
+            <a
+              href="https://shalon.web.lk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg bg-white/6 text-white text-sm hover:bg-white/10 transition-colors"
+            >
+              Contact Sales
+            </a>
+            <SocialIcon icon={MailIcon} label="Email" href="mailto:shalonfernando52@gmail.com" />
+            <SocialIcon icon={GithubIcon} label="GitHub" href="https://github.com/3hal0n" />
+            <SocialIcon icon={LinkedinIcon} label="LinkedIn" href="https://www.linkedin.com/in/shalon-fernando-229826315/" />
+            <SocialIcon icon={InstagramIcon} label="Instagram" href="https://www.instagram.com/3halon/" />
           </div>
         </div>
       </div>
@@ -191,6 +199,14 @@ function LinkedinIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
       <path d="M4.98 3.5C4.98 4.88 3.86 6 2.49 6S0 4.88 0 3.5 1.12 1 2.49 1s2.49 1.12 2.49 2.5zM.5 8h4V23h-4V8zm7 0h3.84v2.05h.06c.54-1.02 1.84-2.1 3.79-2.1 4.05 0 4.8 2.66 4.8 6.12V23h-4v-7.9c0-1.88-.03-4.3-2.62-4.3-2.63 0-3.03 2.06-3.03 4.17V23h-4V8z" />
+    </svg>
+  );
+}
+
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 6.5A4.5 4.5 0 1016.5 13 4.5 4.5 0 0012 8.5zm6.2-3.6a1.08 1.08 0 11-1.08-1.08A1.08 1.08 0 0118.2 4.9zM12 10.5A1.5 1.5 0 1110.5 12 1.5 1.5 0 0112 10.5z" />
     </svg>
   );
 }
