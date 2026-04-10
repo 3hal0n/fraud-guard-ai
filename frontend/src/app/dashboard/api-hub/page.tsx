@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import {
   ApiError,
   ApiKeyItem,
+  BACKEND_BASE_URL,
   generateUserApiKey,
   getUserApiKey,
   getUserInfo,
@@ -16,7 +17,7 @@ import {
 } from "@/lib/api";
 import { motion } from "framer-motion";
 
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+const backendUrl = BACKEND_BASE_URL;
 
 export default function ApiHubPage() {
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
