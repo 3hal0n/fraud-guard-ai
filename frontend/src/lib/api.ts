@@ -1,10 +1,17 @@
 /**
  * Typed API client for the FraudGuard FastAPI backend.
- * Base URL is configured via NEXT_PUBLIC_BACKEND_URL (defaults to localhost for dev).
+ * Base URL is configured via NEXT_PUBLIC_API_URL (or NEXT_PUBLIC_BACKEND_URL for backward compatibility).
  */
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+const RAW_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://fraud-guard-ai-backend.onrender.com"
+    : "http://127.0.0.1:8000");
+
+export const BACKEND_BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
+const BASE_URL = BACKEND_BASE_URL;
 
 export interface AnalyzeRequest {
   amount: number;

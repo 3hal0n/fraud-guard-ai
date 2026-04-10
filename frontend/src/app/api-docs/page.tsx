@@ -1,6 +1,7 @@
 "use client";
 
 import AppLayout from "@/components/AppLayout";
+import { BACKEND_BASE_URL } from "@/lib/api";
 
 const authHeaders = `X-API-Key: <your_api_key>
 Content-Type: application/json`;
@@ -79,7 +80,7 @@ export default function ApiDocsPage() {
         <section className="grid gap-4 md:grid-cols-3">
           <div className="p-5 rounded-2xl bg-[#0A0A0A] border border-white/5">
             <div className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Base URL</div>
-            <div className="text-sm text-white">{process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000"}</div>
+            <div className="text-sm text-white">{BACKEND_BASE_URL}</div>
           </div>
           <div className="p-5 rounded-2xl bg-[#0A0A0A] border border-white/5">
             <div className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Auth</div>
