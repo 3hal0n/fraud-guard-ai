@@ -109,3 +109,4 @@ Lightweight fraud detection platform combining a Python backend, ML models, and 
 
 	---
 
+© 2026 Shalon Fernando. All Rights Reserved.
