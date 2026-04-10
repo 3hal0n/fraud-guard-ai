@@ -42,6 +42,16 @@ const baseNavItems = [
     ),
   },
   {
+    name: "Global Threat Map",
+    href: "/dashboard/map",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 11.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+      </svg>
+    ),
+  },
+  {
     name: "Billing",
     href: "/dashboard/billing",
     icon: (
@@ -76,6 +86,8 @@ const proNavItems = [
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const isDashboard = pathname?.startsWith("/dashboard");
+  const footerOnlyPaths = ["/privacy", "/terms"];
+  const isFooterOnly = footerOnlyPaths.includes(pathname || "");
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
   // We avoid throwing when Clerk isn't configured (CI/fork runs) by
@@ -109,27 +121,38 @@ export default function AppLayout({ children }: AppLayoutProps) {
       
       {/* --- MOBILE NAVBAR (Hidden on lg screens) --- */}
       <header className="lg:hidden sticky top-0 z-50 bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-white/5 px-4 py-4 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <Image src="/favicon.ico" alt="FraudGuard" width={32} height={32} className="object-contain rounded" />
+        <Link href={isFooterOnly ? "/" : "/dashboard"} className="flex items-center gap-3">
+          <Image src="/logo.svg" alt="FraudGuard" width={32} height={32} className="object-contain rounded" />
           <span className="font-medium text-white tracking-tight">FraudGuard</span>
         </Link>
-        <div className="flex items-center gap-4">
-          {clerkEnabled ? (
-            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 border border-white/10" } }} />
+        <div className="flex items-center gap-4 overflow-visible">
+          {isFooterOnly ? (
+            <Link href="/login" className="px-3 py-1 rounded bg-sky-600 text-white text-sm">Login</Link>
+          ) : clerkEnabled ? (
+            <div className="relative">
+              <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 border border-white/10" } }} />
+              {userInfo?.plan === "PRO" && (
+                <span className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 rounded-full bg-cyan-500 px-1 text-[9px] font-bold leading-none text-black border border-cyan-300">
+                  PRO
+                </span>
+              )}
+            </div>
           ) : (
             <Link href="/login" className="px-3 py-1 rounded bg-sky-600 text-white text-sm">Login</Link>
           )}
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-white hover:bg-white/5 rounded-lg transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-            </svg>
-          </button>
+          {!isFooterOnly && (
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-white hover:bg-white/5 rounded-lg transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
+          )}
         </div>
       </header>
 
       {/* --- MOBILE MENU OVERLAY --- */}
       <AnimatePresence>
-        {isMobileMenuOpen && (
+        {isMobileMenuOpen && !isFooterOnly && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -152,10 +175,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </AnimatePresence>
 
       {/* --- DESKTOP SIDEBAR (Hidden on mobile) --- */}
-      <aside className="hidden lg:flex w-72 bg-black border-r border-white/5 flex-col z-20 h-screen sticky top-0">
+      {isDashboard && (
+        <aside className="hidden lg:flex w-72 bg-black border-r border-white/5 flex-col z-20 h-screen sticky top-0">
         <div className="p-6 border-b border-white/5">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <Image src="/favicon.ico" alt="FraudGuard AI" width={32} height={32} className="rounded shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all" />
+            <Image src="/logo.svg" alt="FraudGuard AI" width={32} height={32} className="rounded shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all" />
             <span className="text-lg font-medium text-white tracking-tight">FraudGuard <span className="text-cyan-400">AI</span></span>
           </Link>
         </div>
@@ -173,14 +197,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </nav>
 
         <div className="p-4 border-t border-white/5">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#0A0A0A] border border-white/5 hover:border-white/10 transition-colors">
-            <div className="flex items-center gap-3 overflow-hidden">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#0A0A0A] border border-white/5 hover:border-white/10 transition-colors overflow-visible">
+            <div className="flex items-center gap-3 overflow-visible">
               {clerkEnabled ? (
                 <>
                   <div className="relative">
                     <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-9 h-9 border border-white/10" } }} />
                     {userInfo?.plan === "PRO" && (
-                      <span className="absolute -top-1 -right-1 rounded-full bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold leading-none text-black border border-cyan-300">
+                      <span className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 rounded-full bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold leading-none text-black border border-cyan-300">
                         PRO
                       </span>
                     )}
@@ -202,13 +226,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
           </div>
         </div>
-      </aside>
+        </aside>
+      )}
 
       {/* --- MAIN CONTENT AREA --- */}
       <div className="flex-1 flex flex-col min-w-0 lg:h-screen overflow-y-auto">
         
         {/* Desktop Top Header (Hidden on Mobile) */}
-        {!isDashboard && (
+        {!isDashboard && !isFooterOnly && (
           <header className="hidden lg:flex bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 px-8 py-4 z-10 sticky top-0 items-center justify-end gap-3">
             <button className="p-2.5 hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/10 relative text-slate-400 hover:text-white">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,6 +255,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="relative z-10">
             {children}
           </div>
+          {/* --- MICRO FOOTER (shown when user is logged in) --- */}
+          {userInfo && (
+            <div className="mt-12 pt-6 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <p className="text-xs text-slate-500">
+                © {new Date().getFullYear()} FraudGuard AI. All rights reserved.
+              </p>
+              <div className="flex gap-6 text-xs font-medium text-slate-400">
+                <Link href="/docs" className="hover:text-cyan-400 transition-colors">API Docs</Link>
+                <Link href="/status" className="hover:text-cyan-400 transition-colors">System Status</Link>
+                <Link href="/support" className="hover:text-cyan-400 transition-colors">Support</Link>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

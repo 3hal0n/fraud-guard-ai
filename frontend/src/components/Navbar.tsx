@@ -17,14 +17,14 @@ export default function Navbar() {
     <header className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 w-full flex justify-center pointer-events-none">
       <div className="pointer-events-auto flex items-center gap-4 px-3 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full shadow-lg max-w-4xl w-full mx-4">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/favicon.ico" alt="FraudGuard" width={28} height={28} className="rounded-md flex-shrink-0" />
+          <Image src="/logo.svg" alt="FraudGuard" width={28} height={28} className="rounded-md flex-shrink-0" />
           <span className="text-white font-semibold tracking-wide text-sm md:text-base hidden sm:inline">FraudGuard AI</span>
         </Link>
 
         <nav className="flex-1 hidden md:flex justify-center gap-6 text-sm text-slate-300">
+          <Link href="/#how-it-works" className="hover:text-white transition-colors">How It Works</Link>
           <Link href="/#features" className="hover:text-white transition-colors">Features</Link>
           <Link href="/#pricing" className="hover:text-white transition-colors">Pricing</Link>
-          <Link href="/#how-it-works" className="hover:text-white transition-colors">How It Works</Link>
           <Link href="/#faq" className="hover:text-white transition-colors">FAQ</Link>
         </nav>
 
@@ -75,11 +75,16 @@ export default function Navbar() {
 
       {open && (
         <div className="pointer-events-auto absolute top-[64px] left-1/2 transform -translate-x-1/2 w-[92%] max-w-md bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-3 z-40 md:hidden">
-          <nav className="flex flex-col gap-2 text-sm text-slate-200">
-            <Link onClick={() => setOpen(false)} href="/#features" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Features</Link>
-            <Link onClick={() => setOpen(false)} href="/#pricing" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Pricing</Link>
+            <nav className="flex flex-col gap-2 text-sm text-slate-200">
             <Link onClick={() => setOpen(false)} href="/#how-it-works" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">How It Works</Link>
+            <Link onClick={() => setOpen(false)} href="/#features" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Features</Link>
+            <Link onClick={() => setOpen(false)} href="/#integrations" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Integrations</Link>
+            <Link onClick={() => setOpen(false)} href="/#pricing" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Pricing</Link>
+            <Link onClick={() => setOpen(false)} href="/#security" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Security</Link>
             <Link onClick={() => setOpen(false)} href="/#faq" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">FAQ</Link>
+            <Link onClick={() => setOpen(false)} href="/#final-cta" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Get Started</Link>
+            <Link onClick={() => setOpen(false)} href="/api-docs" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">API Docs</Link>
+            <Link onClick={() => setOpen(false)} href="/status" className="block px-3 py-2 rounded hover:bg-white/3 transition-colors cursor-pointer">Status</Link>
             <hr className="my-2 border-white/10" />
 
             {clerkEnabled ? (

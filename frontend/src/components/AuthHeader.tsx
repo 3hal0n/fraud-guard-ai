@@ -2,6 +2,8 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 
 import React from "react";
+import Link from "next/link";
+import Image from "next/image";
 import {
   SignInButton,
   SignUpButton,
@@ -32,7 +34,10 @@ export default function AuthHeader() {
   return (
     <header className="w-full border-b bg-white/5">
       <nav className="mx-auto max-w-6xl flex items-center justify-between p-4">
-        <div className="text-lg font-semibold">FraudGuard AI</div>
+        <Link href="/" className="flex items-center gap-3">
+          <Image src="/favicon.ico" alt="FraudGuard AI" width={28} height={28} className="rounded-md" />
+          <span className="text-lg font-semibold">FraudGuard AI</span>
+        </Link>
         <div className="flex items-center gap-4">
           {/* Debug: display sign-in state and email when available */}
           <div className="text-sm text-slate-400">

@@ -28,6 +28,10 @@ export default function ScanResults({
   const maxMagnitude = Math.max(1, ...riskFactors.map((factor) => Math.abs(factor.contribution)));
   const displayLabel = status === "PENDING_REVIEW" ? "PENDING REVIEW" : status.replaceAll("_", " ");
   const isBlocked = status === "BLOCK_TRANSACTION";
+  const confidenceScore =
+    status === "APPROVED"
+      ? Math.max(0, Math.min(100, 100 - riskScore))
+      : Math.max(0, Math.min(100, riskScore));
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full z-10">
@@ -75,10 +79,10 @@ export default function ScanResults({
           <div className="p-4 bg-[#121214] rounded-xl border border-white/5">
             <div className="flex justify-between items-center mb-1">
               <span className="text-xs text-slate-500 uppercase tracking-wider">Confidence Score</span>
-              <span className="text-sm font-medium text-white">99.8%</span>
+              <span className="text-sm font-medium text-white">{confidenceScore.toFixed(1)}%</span>
             </div>
             <div className="w-full h-1 bg-black rounded-full overflow-hidden mt-2">
-              <div className="w-[99.8%] h-full bg-white/40" />
+              <div className="h-full bg-white/40" style={{ width: `${confidenceScore}%` }} />
             </div>
           </div>
           <div className="p-4 bg-[#121214] rounded-xl border border-white/5 flex justify-between items-center">

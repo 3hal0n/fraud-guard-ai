@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from predict import predict_fraud, load_models
 from app.services.explainer import build_prediction_input, get_prediction_explanation
 import uuid
 import os
 import csv
 import importlib
+from typing import Literal
 from datetime import datetime, timezone
 from db import (
     SessionLocal,
@@ -17,6 +18,7 @@ from db import (
     get_user_telemetry_counts,
     increment_usage,
     save_transaction,
+    get_transaction_locations,
     save_or_update_payment,
     get_payment_history,
     get_subscription_by_stripe_subscription_id,
@@ -24,6 +26,8 @@ from db import (
     create_project_api_key,
     list_user_api_keys,
     revoke_api_key,
+    get_or_create_rules_engine_settings,
+    update_rules_engine_settings,
     set_user_plan,
     upsert_subscription,
     Transaction as TxModel,
@@ -53,6 +57,14 @@ class CheckoutSessionRequest(BaseModel):
 
 class ApiKeyCreateRequest(BaseModel):
     project_name: str
+
+
+class RulesEngineSettingsUpdateRequest(BaseModel):
+    profile: Literal["GENERAL", "CUSTOM"] = "GENERAL"
+    review_threshold: int = Field(default=30, ge=0, le=99)
+    block_threshold: int = Field(default=70, ge=1, le=100)
+    block_on_location_mismatch: bool = False
+    location_mismatch_min_score: int = Field(default=85, ge=1, le=100)
 
 # ---------------------------------------------------------------------------
 # Lifespan: load ML models + start background jobs once at startup
@@ -127,6 +139,63 @@ def _ts_to_datetime(value):
         return datetime.fromtimestamp(int(value), tz=timezone.utc)
     except Exception:
         return None
+
+
+def _default_rules_engine_settings() -> dict:
+    return {
+        "profile": "GENERAL",
+        "review_threshold": 30,
+        "block_threshold": 70,
+        "block_on_location_mismatch": False,
+        "location_mismatch_min_score": 85,
+    }
+
+
+def _serialize_rules_engine_settings(row) -> dict:
+    return {
+        "profile": (row.profile or "GENERAL").upper(),
+        "review_threshold": int(row.review_threshold),
+        "block_threshold": int(row.block_threshold),
+        "block_on_location_mismatch": bool(row.block_on_location_mismatch),
+        "location_mismatch_min_score": int(row.location_mismatch_min_score),
+    }
+
+
+def _validate_rules_engine_thresholds(review_threshold: int, block_threshold: int):
+    if int(review_threshold) >= int(block_threshold):
+        raise HTTPException(status_code=400, detail="review_threshold must be lower than block_threshold")
+
+
+def _has_location_mismatch_signal(risk_factors: list[dict]) -> bool:
+    for factor in risk_factors or []:
+        feature = str((factor or {}).get("feature", "")).lower()
+        if "location" in feature and ("mismatch" in feature or "anomaly" in feature):
+            return True
+    return False
+
+
+def _location_has_mismatch_keywords(location: str) -> bool:
+    loc = (location or "").lower()
+    risky = ["unknown", "vpn", "proxy", "tor", "offshore", "international"]
+    return any(token in loc for token in risky)
+
+
+def _status_from_rules(score: int, rules: dict, risk_factors: list[dict] | None = None) -> str:
+    review_threshold = int(rules.get("review_threshold", 30))
+    block_threshold = int(rules.get("block_threshold", 70))
+    if score >= block_threshold:
+        status = "BLOCK_TRANSACTION"
+    elif score >= review_threshold:
+        status = "PENDING_REVIEW"
+    else:
+        status = "APPROVED"
+
+    if bool(rules.get("block_on_location_mismatch", False)):
+        min_score = int(rules.get("location_mismatch_min_score", 85))
+        if score >= min_score and _has_location_mismatch_signal(risk_factors or []):
+            status = "BLOCK_TRANSACTION"
+
+    return status
 
 
 @app.post("/api/v1/webhook/clerk")
@@ -530,6 +599,59 @@ async def get_user_info(user_id: str):
             pass
 
 
+@app.get("/api/v1/user/{user_id}/rules-engine")
+async def get_rules_engine_settings(user_id: str):
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+
+        row = get_or_create_rules_engine_settings(db, user_id)
+        can_edit = (user.plan or "FREE").upper() == "PRO"
+        return {
+            "user_id": user_id,
+            **_serialize_rules_engine_settings(row),
+            "can_edit": can_edit,
+        }
+    finally:
+        db.close()
+
+
+@app.put("/api/v1/user/{user_id}/rules-engine")
+async def put_rules_engine_settings(user_id: str, payload: RulesEngineSettingsUpdateRequest):
+    db = SessionLocal()
+    try:
+        user = get_user(db, user_id)
+        if not user:
+            from db import create_user_if_not_exists
+            user = create_user_if_not_exists(db, user_id)
+
+        if (user.plan or "FREE").upper() != "PRO":
+            raise HTTPException(status_code=403, detail="Rules Engine customization is available on the PRO plan")
+
+        _validate_rules_engine_thresholds(payload.review_threshold, payload.block_threshold)
+
+        row = update_rules_engine_settings(
+            db,
+            user_id=user_id,
+            profile=payload.profile,
+            review_threshold=payload.review_threshold,
+            block_threshold=payload.block_threshold,
+            block_on_location_mismatch=payload.block_on_location_mismatch,
+            location_mismatch_min_score=payload.location_mismatch_min_score,
+        )
+
+        return {
+            "user_id": user_id,
+            **_serialize_rules_engine_settings(row),
+            "can_edit": True,
+        }
+    finally:
+        db.close()
+
+
 @app.get("/api/v1/transactions/{user_id}")
 async def get_transactions(user_id: str, limit: int = 20):
     """Return recent transactions for a user, newest first.
@@ -546,6 +668,8 @@ async def get_transactions(user_id: str, limit: int = 20):
             .limit(limit)
             .all()
         )
+        location_map = get_transaction_locations(db, [str(t.id) for t in txns])
+
         return [
             {
                 "id": t.id,
@@ -553,6 +677,7 @@ async def get_transactions(user_id: str, limit: int = 20):
                 "risk_score": float(t.risk_score),  # already 0-1 in DB
                 "status": "risk" if float(t.risk_score) >= 0.50 else "safe",
                 "timestamp": t.created_at.isoformat() if t.created_at else None,
+                "location": location_map.get(str(t.id)),
             }
             for t in txns
         ]
@@ -769,19 +894,27 @@ async def analyze(
             location=transaction.location or "",
             time_str=transaction.time or "",
         )
-        # Map numeric score -> human status for the UI and policy enforcement
-        if score < 30:
-            status = "APPROVED"
-        elif 30 <= score <= 70:
-            status = "PENDING_REVIEW"
-        else:
-            status = "BLOCK_TRANSACTION"
+
+        rules = _default_rules_engine_settings()
+        if user and (user.plan or "FREE").upper() == "PRO":
+            try:
+                rules_row = get_or_create_rules_engine_settings(db, user.id)
+                rules = _serialize_rules_engine_settings(rules_row)
+            except Exception as rules_exc:
+                logger.warning("Failed to load rules engine settings; using defaults: %s", rules_exc)
 
         # ── Persist (best-effort; failure must not mask the result) ─────────
         if db_ok:
             try:
                 tx_id = str(uuid.uuid4())
-                save_transaction(db, tx_id, user_id, float(transaction.amount), int(score))
+                save_transaction(
+                    db,
+                    tx_id,
+                    user_id,
+                    float(transaction.amount),
+                    int(score),
+                    transaction.location,
+                )
                 if user_id:
                     user = user or get_user(db, user_id)
                     increment_usage(db, user, 1)
@@ -800,11 +933,14 @@ async def analyze(
         except Exception as explainer_exc:
             logger.warning("Failed to compute prediction explanation: %s", explainer_exc)
 
+        status = _status_from_rules(int(score), rules, risk_factors)
+
         return {
             "risk_score": int(score),
             "is_fraud": is_fraud,
             "status": status,
             "db_available": db_ok,
+            "applied_rules": rules,
             "risk_factors": risk_factors,
         }
     except HTTPException:
@@ -858,6 +994,12 @@ async def analyze_bulk_csv(user_id: str = Form(...), file: UploadFile = File(...
 
         flagged_rows = []
         processed = 0
+        rules = _default_rules_engine_settings()
+        try:
+            rules_row = get_or_create_rules_engine_settings(db, user_id)
+            rules = _serialize_rules_engine_settings(rules_row)
+        except Exception as rules_exc:
+            logger.warning("Failed to load rules engine settings for bulk audit; using defaults: %s", rules_exc)
 
         for idx, row in enumerate(rows, start=1):
             try:
@@ -875,18 +1017,15 @@ async def analyze_bulk_csv(user_id: str = Form(...), file: UploadFile = File(...
                     location=location,
                     time_str=time_str,
                 )
-                # Map numeric score -> human status
-                if score < 30:
-                    status = "APPROVED"
-                elif 30 <= score <= 70:
-                    status = "PENDING_REVIEW"
-                else:
-                    status = "BLOCK_TRANSACTION"
+                synthetic_factors = []
+                if _location_has_mismatch_keywords(location):
+                    synthetic_factors.append({"feature": "Location/merchant mismatch", "contribution": 0.0})
+                status = _status_from_rules(int(score), rules, synthetic_factors)
                 processed += 1
 
                 tx_id = str(uuid.uuid4())
                 try:
-                    save_transaction(db, tx_id, user_id, amount, int(score))
+                    save_transaction(db, tx_id, user_id, amount, int(score), location)
                 except Exception as persist_exc:
                     logger.warning("Bulk persist failed for row %s: %s", idx, persist_exc)
 

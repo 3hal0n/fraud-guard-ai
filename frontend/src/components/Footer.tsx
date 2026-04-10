@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
+import FinalCTA from "@/components/FinalCTA";
 import { usePathname } from "next/navigation";
 
 export default function Footer() {
@@ -8,12 +10,22 @@ export default function Footer() {
   if (pathname?.startsWith("/dashboard")) return null;
   const currentYear = new Date().getFullYear();
 
-  const productLinks = ["Features", "Pricing", "API Docs", "Dashboard"];
-  const companyLinks = ["About", "Blog", "Careers", "Contact"];
-  const legalLinks = ["Privacy Policy", "Terms of Service", "Security", "Status"];
+  const productLinks = [
+    { label: "Pricing", href: "/#pricing" },
+    { label: "API Docs", href: "/api-docs" },
+    { label: "Dashboard", href: "/dashboard" },
+  ];
+  const legalLinks = [
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Status", href: "/status" },
+  ];
 
   return (
-    <footer className="relative mt-16 sm:mt-24 md:mt-32 w-full bg-black border-t border-cyan-500/10 overflow-hidden">
+    <>
+      {pathname === "/" && <FinalCTA />}
+
+      <footer className="relative mt-0 sm:mt-0 md:mt-0 w-full bg-black border-t border-cyan-500/10 overflow-hidden">
       {/* Background Texture (Subtle Grid) */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#22d3ee1f_1px,transparent_1px),linear-gradient(to_bottom,#22d3ee1f_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
@@ -55,7 +67,7 @@ export default function Footer() {
           </div>
 
           {/* Right: Navigation Links */}
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8">
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             {/* Column 1: Product */}
             <div className="space-y-4 sm:space-y-6">
               <h4 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
@@ -63,54 +75,34 @@ export default function Footer() {
               </h4>
               <ul className="space-y-3 sm:space-y-4">
                 {productLinks.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="group flex items-center text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95"
-                    >
+                  <li key={item.label}>
+                    <Link href={item.href} className="group flex items-center text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95">
                       <span className="relative">
-                        {item}
+                        {item.label}
                         <span className="absolute -bottom-1 left-0 w-0 h-px bg-teal-400 transition-all group-hover:w-full" />
                       </span>
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Column 2: Company */}
-            <div className="space-y-4 sm:space-y-6">
-              <h4 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
-                Company
-              </h4>
-              <ul className="space-y-3 sm:space-y-4">
-                {companyLinks.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95"
-                    >
-                      {item}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            
 
-            {/* Column 3: Legal */}
+            {/* Column 2: Legal */}
             <div className="space-y-4 sm:space-y-6">
               <h4 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
                 Legal
               </h4>
               <ul className="space-y-3 sm:space-y-4">
                 {legalLinks.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
+                  <li key={item.label}>
+                    <Link
+                      href={item.href}
                       className="text-sm sm:text-base text-slate-400 hover:text-teal-400 transition-colors active:scale-95"
                     >
-                      {item}
-                    </a>
+                      {item.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -140,6 +132,7 @@ export default function Footer() {
         </h1>
       </div>
     </footer>
+    </>
   );
 }
 
