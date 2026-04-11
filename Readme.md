@@ -1,3 +1,4 @@
+```markdown
 # FraudGuard AI
 
 ![FraudGuard AI Dashboard](snippets/dashboard.png)
@@ -45,3 +46,69 @@ python -m venv .venv
 # Mac/Linux: source .venv/bin/activate
 
 pip install -r requirements.txt
+```
+
+Configure your local environment (`.env`):
+
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/postgres
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Run the database migrations and start the server:
+
+```bash
+alembic upgrade head
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 2. Frontend (Next.js)
+
+```bash
+cd frontend
+npm install
+```
+
+Configure your local environment (`.env.local`):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+### 3. Testing Suite
+
+From the project root, run the Pytest suite to validate API endpoints and model inference:
+
+```bash
+pytest -q
+```
+
+---
+
+## CI/CD & Deployment
+
+This repository utilizes GitHub Actions to automatically lint, test, and validate builds.
+
+* **Backend CI:** `.github/workflows/backend-ci.yml`
+* **Frontend CI:** `.github/workflows/frontend-ci.yml`
+
+**Production Deployment Strategy:**
+
+* **Frontend:** Connected directly to Vercel. Pushes to `main` trigger automatic edge deployments.
+* **Backend:** Hosted via Render Web Services.
+  * Build Command: `pip install -r requirements.txt`
+  * Start Command: `gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT`
+
+---
+
+*© 2026 Shalon Fernando. All Rights Reserved. This is a proprietary portfolio project. Unauthorized copying, distribution, or commercialization of this codebase is strictly prohibited.*
+```
