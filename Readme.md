@@ -1,4 +1,3 @@
-```markdown
 # FraudGuard AI
 
 ![FraudGuard AI Dashboard](snippets/dashboard.png)
