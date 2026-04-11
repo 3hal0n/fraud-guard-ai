@@ -65,7 +65,7 @@ Lightweight fraud detection platform combining a Python backend, ML models, and 
 	- ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 	- ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
 
-	### The ML Flex — robustness testing (high level)
+	### Robustness testing (high level)
 
 	We perform controlled adversarial simulations to validate model robustness and reduce false positives. These tests replay high-volume, synthetic traffic across diverse IP ranges and payload shapes during isolated test windows. The goal is to exercise edge cases (rate spikes, unusual geo-distribution, malformed payloads) and measure detection thresholds, latency, and alerting behavior. All testing is performed in a controlled, ethical environment with monitoring and rollback; no production data is exposed.
 
@@ -109,12 +109,4 @@ Lightweight fraud detection platform combining a Python backend, ML models, and 
 
 	---
 
-	If you want, I can also add CI badges, a short CONTRIBUTING section, or a trimmed release changelog. Which would you prefer?
-
-## Where to look next
-- API routes and prediction logic: `backend/`.
-- Frontend pages and components: `frontend/src/app` and `frontend/src/components`.
-- Architecture notes: `docs/TechnicalArchitecture.md`.
-
-If you want, I can (a) refine the feature descriptions using recent commits, (b) add badges or CI instructions, or (c) create a changelog file. Which would you prefer?
-
+© 2026 Shalon Fernando. All Rights Reserved.

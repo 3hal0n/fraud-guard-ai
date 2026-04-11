@@ -166,9 +166,9 @@ export default function LandingPage() {
             <Link href="/signup" className="w-full sm:w-auto px-8 py-3.5 text-sm sm:text-base rounded-full bg-cyan-600 text-white font-medium shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:bg-cyan-500 transition-all active:scale-95 border border-cyan-400/50">
               Start Securing Smarter
             </Link>
-            <button className="w-full sm:w-auto px-8 py-3.5 text-sm sm:text-base rounded-full border border-white/10 bg-black/50 backdrop-blur-md text-white font-medium hover:bg-white/10 transition-all active:scale-95">
+            <Link href="/api-docs" className="w-full sm:w-auto px-8 py-3.5 text-sm sm:text-base rounded-full border border-white/10 bg-black/50 backdrop-blur-md text-white font-medium hover:bg-white/10 transition-all active:scale-95 text-center">
               View Documentation
-            </button>
+            </Link>
           </motion.div>
 
           {/* --- DASHBOARD UI MOCKUP --- */}
