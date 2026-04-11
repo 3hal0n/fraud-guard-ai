@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fraud-guard-ai-five.vercel.app/sitemap.xml
+# Crawl-delay: 10  # Uncomment if you want to limit crawl rate
