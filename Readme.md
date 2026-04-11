@@ -93,6 +93,34 @@ pytest -q
 
 ---
 
+## Keep backend awake (Render free-tier heartbeat)
+
+The classic free-tier cold-start: Render will sleep web services after ~15 minutes of inactivity, which can cause a long startup when your XGBoost model is loaded on boot. To keep your demo responsive without paying for a reserved instance, use the simple "Heartbeat Ping" trick described below.
+
+Strategy: render sleeps after ~15 minutes. Ping a tiny, zero-logic endpoint every 14 minutes from a free cron service (e.g., cron-job.org). Render provides 750 free instance hours/month — a 31-day month is 744 hours — so one web service can be kept awake 24/7 for free.
+
+Step 1 — Add a lightweight ping endpoint
+Add this to `backend/main.py` and deploy to Render (do NOT ping the heavy `/api/v1/analyze` endpoint):
+
+```python
+@app.get("/api/v1/ping")
+async def keep_awake():
+  return {"status": "FraudGuard AI is awake"}
+```
+
+Step 2 — Set up a free cron job
+Use cron-job.org (free) or a similar free scheduler:
+
+1. Create a free account on https://cron-job.org
+2. Create a new cron job:
+   - Title: FraudGuard Keep-Awake
+   - URL: `https://your-render-app-url.onrender.com/api/v1/ping`
+   - Schedule: user-defined — every 14 minutes
+3. Save the cron job.
+
+The result: cron-job.org will call `/api/v1/ping` every 14 minutes, resetting Render's sleep timer and keeping the XGBoost model loaded. Recruiters and hiring managers will see sub-85ms scans immediately.
+
+
 ## CI/CD & Deployment
 
 This repository utilizes GitHub Actions to automatically lint, test, and validate builds.
