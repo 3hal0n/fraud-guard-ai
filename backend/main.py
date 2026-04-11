@@ -542,6 +542,15 @@ async def root():
     return {"message": "FraudGuard AI backend is running"}
 
 
+@app.get("/api/v1/ping")
+async def keep_awake():
+    """Lightweight endpoint used by external cron services to prevent free-tier
+    Render instances from sleeping. This endpoint performs zero logic and is
+    safe to ping frequently (every 14 minutes recommended).
+    """
+    return {"status": "FraudGuard AI is awake"}
+
+
 @app.get("/api/v1/db-status")
 async def db_status():
     """Check DB connectivity and return status."""
