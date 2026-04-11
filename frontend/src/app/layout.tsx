@@ -33,7 +33,7 @@ export const metadata: Metadata = {
       "Real-time AI-powered fraud detection with sub-second decisions. Enterprise-grade security for FinTech platforms.",
     url: "https://fraud-guard-ai-five.vercel.app",
     siteName: "FraudGuard AI",
-    images: ["/snippets/dashboard.png"],
+    images: ["/logo.svg"],
     locale: "en_US",
     type: "website",
   },
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     title: "FraudGuard AI - Stop Transaction Fraud in Real Time",
     description:
       "Real-time AI-powered fraud detection with sub-second decisions. Enterprise-grade security for FinTech platforms.",
-    images: ["/snippets/dashboard.png"],
+    images: ["/logo.svg"],
   },
   themeColor: [{ media: "(prefers-color-scheme: light)", color: "#ffffff" }, { media: "(prefers-color-scheme: dark)", color: "#000000" }],
   metadataBase: new URL("https://fraud-guard-ai-five.vercel.app"),
@@ -71,7 +71,7 @@ export default function RootLayout({
               operatingSystem: "Web",
               description:
                 "Real-time AI-powered transaction fraud detection with explainability (SHAP) and an enterprise dashboard.",
-              image: "https://fraud-guard-ai-five.vercel.app/snippets/dashboard.png",
+              image: "https://fraud-guard-ai-five.vercel.app/logo.svg",
             }),
           }}
         />
