@@ -110,4 +110,3 @@ This repository utilizes GitHub Actions to automatically lint, test, and validat
 ---
 
 *© 2026 Shalon Fernando. All Rights Reserved. This is a proprietary portfolio project. Unauthorized copying, distribution, or commercialization of this codebase is strictly prohibited.*
-```
