@@ -198,6 +198,32 @@ def _status_from_rules(score: int, rules: dict, risk_factors: list[dict] | None 
     return status
 
 
+def _stripe_error_detail(exc: Exception, fallback: str) -> str:
+    message = getattr(exc, "user_message", None) or getattr(exc, "message", None)
+    if isinstance(message, str) and message.strip():
+        return message.strip()
+
+    error = getattr(exc, "error", None)
+    if error is not None:
+        error_message = getattr(error, "message", None)
+        if isinstance(error_message, str) and error_message.strip():
+            return error_message.strip()
+
+    response = getattr(exc, "json_body", None)
+    if isinstance(response, dict):
+        err = response.get("error") or {}
+        if isinstance(err, dict):
+            error_message = err.get("message")
+            if isinstance(error_message, str) and error_message.strip():
+                return error_message.strip()
+
+    fallback_message = str(exc).strip()
+    if fallback_message:
+        return fallback_message
+
+    return fallback
+
+
 @app.post("/api/v1/webhook/clerk")
 async def clerk_webhook(request: dict):
     """Simple Clerk webhook receiver to create/sync users.
@@ -264,25 +290,36 @@ async def create_checkout_session(payload: CheckoutSessionRequest):
 
         try:
             configured_price = stripe_client.Price.retrieve(price_id)
-            if not configured_price.get("recurring"):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Configured Stripe price is not recurring. Please set STRIPE_PRICE_ID to a recurring monthly/annual price.",
-                )
-        except HTTPException:
-            raise
-        except Exception:
-            raise HTTPException(status_code=502, detail="Unable to validate configured Stripe price")
+        except Exception as exc:
+            detail = _stripe_error_detail(
+                exc,
+                "Stripe price could not be loaded. Check that STRIPE_SECRET_KEY and STRIPE_PRICE_ID belong to the same Stripe account.",
+            )
+            raise HTTPException(status_code=400, detail=detail)
 
-        session = stripe_client.checkout.Session.create(
-            mode="subscription",
-            line_items=[{"price": price_id, "quantity": 1}],
-            success_url=success_url,
-            cancel_url=cancel_url,
-            client_reference_id=user_id,
-            metadata={"user_id": user_id},
-            allow_promotion_codes=True,
-        )
+        if not configured_price.get("recurring"):
+            raise HTTPException(
+                status_code=400,
+                detail="Configured Stripe price is not recurring. Set STRIPE_PRICE_ID to a recurring monthly or annual price.",
+            )
+
+        try:
+            session = stripe_client.checkout.Session.create(
+                mode="subscription",
+                line_items=[{"price": price_id, "quantity": 1}],
+                success_url=success_url,
+                cancel_url=cancel_url,
+                client_reference_id=user_id,
+                metadata={"user_id": user_id},
+                allow_promotion_codes=True,
+            )
+        except Exception as exc:
+            logger.exception("Stripe checkout session creation failed for user_id=%s", user_id)
+            detail = _stripe_error_detail(
+                exc,
+                "Failed to create Stripe checkout session. Verify that STRIPE_SECRET_KEY and STRIPE_PRICE_ID are valid for the same Stripe account.",
+            )
+            raise HTTPException(status_code=400, detail=detail)
 
         checkout_url = session.get("url")
         if not checkout_url:
@@ -291,10 +328,6 @@ async def create_checkout_session(payload: CheckoutSessionRequest):
         return {"checkout_url": checkout_url}
     except HTTPException:
         raise
-    except Exception as exc:
-        # Stripe exceptions vary across SDK versions; treat all provider errors as bad gateway.
-        logger.exception("Checkout session creation failed: %s", exc)
-        raise HTTPException(status_code=502, detail="Failed to create Stripe checkout session")
     finally:
         db.close()
 

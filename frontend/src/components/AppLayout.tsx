@@ -262,9 +262,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 © {new Date().getFullYear()} FraudGuard AI. All rights reserved.
               </p>
               <div className="flex gap-6 text-xs font-medium text-slate-400">
-                <Link href="/docs" className="hover:text-cyan-400 transition-colors">API Docs</Link>
+                <Link href="/api-docs" className="hover:text-cyan-400 transition-colors">API Docs</Link>
                 <Link href="/status" className="hover:text-cyan-400 transition-colors">System Status</Link>
-                <Link href="/support" className="hover:text-cyan-400 transition-colors">Support</Link>
+                <a href="mailto:support@fraudguardai.com" className="hover:text-cyan-400 transition-colors">Support</a>
               </div>
             </div>
           )}
