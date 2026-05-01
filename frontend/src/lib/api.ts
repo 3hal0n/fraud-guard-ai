@@ -310,6 +310,10 @@ export interface BillingOverview {
   history: BillingHistoryItem[];
 }
 
+export interface PingResponse {
+  status: string;
+}
+
 /** POST /api/v1/analyze/bulk-csv */
 export async function uploadBulkAuditCsv(userId: string, file: File): Promise<BulkAuditResponse> {
   const formData = new FormData();
@@ -347,4 +351,9 @@ export async function createCheckoutSession(userId: string): Promise<CheckoutSes
 /** GET /api/v1/billing/:id */
 export async function getBillingOverview(userId: string): Promise<BillingOverview> {
   return request<BillingOverview>(`/api/v1/billing/${userId}`);
+}
+
+/** GET /api/v1/ping */
+export async function pingBackend(): Promise<PingResponse> {
+  return request<PingResponse>("/api/v1/ping");
 }
