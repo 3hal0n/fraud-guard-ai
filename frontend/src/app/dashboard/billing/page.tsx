@@ -11,6 +11,7 @@ import {
   createCheckoutSession,
   getBillingOverview,
   getUserInfo,
+  pingBackend,
   UserInfo,
 } from "@/lib/api";
 
@@ -40,6 +41,10 @@ export default function BillingPage() {
       setLoadingInfo(false);
       return;
     }
+
+    void pingBackend().catch(() => {
+      // Best-effort warm-up for Render cold starts; checkout still proceeds.
+    });
 
     Promise.all([getUserInfo(user.id), getBillingOverview(user.id)])
       .then(([info, overview]) => {
@@ -120,6 +125,9 @@ export default function BillingPage() {
     setApiError(null);
     setIsRedirecting(true);
     try {
+      await pingBackend().catch(() => {
+        // Continue even if the warm-up ping fails; checkout may still succeed.
+      });
       const { checkout_url } = await createCheckoutSession(user.id);
       if (!checkout_url) {
         throw new Error("Missing checkout URL from server.");
